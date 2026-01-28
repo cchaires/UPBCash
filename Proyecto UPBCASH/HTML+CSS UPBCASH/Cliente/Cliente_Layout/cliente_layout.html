@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Cliente</title>
+  <link rel="stylesheet" href="styles_cliente_layout.css" />
+</head>
+
+<body>
+  <div class="page">
+    <div class="app-shell">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="imgupbcash-logo-c.png" alt="UPBCash" />
+        </div>
+
+        <nav class="nav">
+          <a class="nav__item nav__item--active" href="#">
+            <span class="nav__icon">📍</span>
+            <span>Mapa</span>
+          </a>
+
+          <a class="nav__item" href="#">
+            <span class="nav__icon">🕒</span>
+            <span>Historial</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <!-- Bloque inferior: Usuario + Mi cuenta -->
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Mi cuenta</div>
+          </div>
+
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menú de cuenta">
+            ▾
+          </button>
+
+          <!-- Menú desplegable (sale desde la flechita) -->
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="#" role="menuitem">Cuenta</a>
+            <a href="#" role="menuitem">Cambiar rol</a>
+            <a href="#" role="menuitem">Cerrar sesión</a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="main">
+        <div class="main__inner">
+          <section class="card">
+            <div class="card__banner">
+              <img src="evento-banner.png" alt="Banner del evento" />
+            </div>
+
+            <h1 class="event-title">Noche Mexicana</h1>
+
+            <div class="balance-row">
+              <div class="balance-label">Saldo disponible:</div>
+              <div class="balance-amount">$100</div>
+
+              <button class="btn btn--ghost" type="button">
+                Recarga saldo
+              </button>
+            </div>
+
+            <button class="btn btn--primary" type="button">
+              Explorar Menú
+            </button>
+          </section>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Si tu archivo se llama dropdown_cliente_js SIN .js, cámbialo a .js -->
+  <script src="dropdown_cliente.js"></script>
+</body>
+</html>
+
+
+

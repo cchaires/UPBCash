@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UPBCash • Cliente</title>
+  <style>
+    :root{
+      --bg1:#5B137E;
+      --bg2:#3F0B5B;
+      --card:#F6F1F8;
+      --text:#26142f;
+      --muted:#6d5a78;
+
+      --gold:#D4A62A;
+      --gold2:#B88512;
+
+      --stroke:rgba(0,0,0,.12);
+      --shadow:0 24px 60px rgba(0,0,0,.35);
+      --radius:26px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background: radial-gradient(1200px 700px at 50% -20%, rgba(255,255,255,.14), transparent 50%),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:22px;
+    }
+
+    /* “pantalla” estilo app */
+    .screen{
+      width: min(420px, 100%);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.12);
+    }
+
+    /* header app */
+    .topbar{
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      padding: 18px 18px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      border-bottom:1px solid rgba(255,255,255,.16);
+    }
+
+    .topbar img{
+      height:200px;;
+      width:auto;
+      display:block;
+    }
+
+    /* contenido */
+    .content{
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+      min-height: 640px; /* para que se sienta “pantalla” */
+      background:
+        radial-gradient(700px 220px at 50% 0%, rgba(0,0,0,.06), transparent 60%),
+        var(--card);
+    }
+
+    .event{
+      border:1px solid var(--stroke);
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(255,255,255,.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:78px;
+      overflow:hidden;
+    }
+    .event img{
+      max-width:100%;
+      height:auto;
+      display:block;
+      border-radius: 12px;
+    }
+
+    .balanceRow{
+      margin-top: 4px;
+      display:flex;
+      align-items:baseline;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      text-align:center;
+    }
+
+    .balanceRow .label{
+      color:var(--muted);
+      font-weight:600;
+      font-size:15px;
+    }
+    .balanceRow .amount{
+      font-weight:900;
+      font-size:28px;
+      letter-spacing:.2px;
+    }
+
+    .recharge{
+      display:flex;
+      justify-content:center;
+    }
+    .btnSmall{
+      border:1px solid rgba(212,166,42,.55);
+      background: rgba(255,255,255,.65);
+      color: var(--gold2);
+      font-weight:800;
+      padding:10px 14px;
+      border-radius: 12px;
+      cursor:pointer;
+      transition:.15s transform ease, .15s opacity ease;
+    }
+    .btnSmall:active{ transform: scale(.98); }
+    .btnSmall:hover{ opacity:.95; }
+
+    .ctaWrap{
+      margin-top: 8px;
+      display:flex;
+      justify-content:center;
+    }
+    .btnPrimary{
+      width:min(320px, 100%);
+      border:none;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 18px;
+      font-weight: 900;
+      color:white;
+      cursor:pointer;
+      background: linear-gradient(180deg, var(--gold), var(--gold2));
+      box-shadow: 0 12px 26px rgba(0,0,0,.18);
+      transition:.15s transform ease, .15s filter ease;
+    }
+    .btnPrimary:hover{ filter: brightness(1.02); }
+    .btnPrimary:active{ transform: scale(.985); }
+
+    /* espacio vacío como en el wireframe */
+    .spacer{
+      flex:1;
+      border: 1px dashed rgba(0,0,0,.08);
+      border-radius: 18px;
+      background: rgba(255,255,255,.35);
+    }
+
+    /* bottom nav */
+    .bottomNav{
+      position: relative;
+      border-top: 1px solid rgba(0,0,0,.10);
+      background: rgba(255,255,255,.7);
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 8px 8px 10px;
+      gap: 6px;
+    }
+    .navItem{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding: 10px 6px;
+      border-radius: 14px;
+      color: rgba(0,0,0,.65);
+      text-decoration:none;
+      font-weight:700;
+      font-size: 12.5px;
+      user-select:none;
+    }
+    .navItem svg{
+      width:22px;height:22px;
+      opacity:.9;
+    }
+    .navItem.active{
+      background: rgba(91,19,126,.12);
+      color: var(--bg1);
+    }
+
+    /* etiqueta de rol (opcional “Cliente”) */
+    .roleLabel{
+      text-align:center;
+      padding: 10px 0 14px;
+      font-weight: 900;
+      font-size: 22px;
+      color: rgba(0,0,0,.68);
+      background: transparent;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="screen">
+
+    <!-- HEADER -->
+    <div class="topbar">
+      <img src="imgupbcash-logo-c.png" alt="UPBCash">
+    </div>
+
+    <!-- CONTENIDO -->
+    <div class="content">
+
+      <!-- Logo evento (banner) -->
+      <div class="event" aria-label="Evento activo">
+        <img src="evento-banner.png" alt="Logo del evento">
+      </div>
+
+      <!-- Saldo -->
+      <div class="balanceRow">
+        <span class="label">Saldo disponible:</span>
+        <span class="amount">$100</span>
+      </div>
+
+      <!-- Recarga -->
+      <div class="recharge">
+        <button class="btnSmall" type="button">Recarga saldo</button>
+      </div>
+
+      <!-- CTA -->
+      <div class="ctaWrap">
+        <button class="btnPrimary" type="button">Explorar Menú</button>
+      </div>
+
+      <!-- Área vacía (wireframe) -->
+      <div class="spacer" aria-hidden="true"></div>
+
+    </div>
+
+    <!-- NAV -->
+    <nav class="bottomNav" aria-label="Navegación">
+      <a class="navItem active" href="#">
+        <!-- icono menú -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+        Menú
+      </a>
+
+      <a class="navItem" href="#">
+        <!-- icono mapa -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 21s7-4.6 7-11a7 7 0 0 0-14 0c0 6.4 7 11 7 11z"/>
+          <circle cx="12" cy="10" r="2.5"/>
+        </svg>
+        Mapa
+      </a>
+
+      <a class="navItem" href="#">
+        <!-- icono historial -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 12a9 9 0 1 0 3-6.7"/>
+          <path d="M3 4v5h5"/>
+          <path d="M12 7v6l4 2"/>
+        </svg>
+        Historial
+      </a>
+
+      <a class="navItem" href="#">
+        <!-- icono usuario -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M20 21a8 8 0 0 0-16 0"/>
+          <circle cx="12" cy="8" r="4"/>
+        </svg>
+        Cliente
+      </a>
+    </nav>
+
+    <div class="roleLabel">Cliente</div>
+  </div>
+</body>
+</html>

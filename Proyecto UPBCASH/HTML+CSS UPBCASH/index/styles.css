@@ -1,0 +1,128 @@
+/* ===== RESET ===== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* ===== COLORES UPBCASH ===== */
+:root {
+  --morado: #5B137E;
+  --morado-oscuro: #3F0B5B;
+  --dorado: #D4A62A;
+  --dorado-oscuro: #B88512;
+  --blanco: #ffffff;
+  --gris-claro: #F6F1F8;
+  --texto: #2b1b35;
+  --muted: #6a5b74;
+}
+
+/* ===== FONDO ===== */
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    180deg,
+    var(--morado),
+    var(--morado-oscuro)
+  );
+  padding: 20px;
+}
+
+/* ===== TARJETA ===== */
+.card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+}
+
+/* ===== HEADER ===== */
+.card__header {
+  background: var(--morado);
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.brand__logo {
+  width: 250px;
+  max-width: 100%;
+}
+
+/* ===== CUERPO ===== */
+.card__body {
+  background: var(--gris-claro);
+  padding: 24px 22px 28px;
+}
+
+/* ===== FORM ===== */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.input {
+  padding: 14px;
+  font-size: 16px;
+  border-radius: 14px;
+  border: 2px solid rgba(212,166,42,.4);
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--dorado);
+}
+
+/* ===== BOTÓN ===== */
+.btn {
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: linear-gradient(
+    180deg,
+    var(--dorado),
+    var(--dorado-oscuro)
+  );
+  color: white;
+}
+
+/* ===== TEXTO ===== */
+.helper {
+  text-align: center;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.link {
+  color: var(--morado);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.divider {
+  border: none;
+  height: 1px;
+  background: rgba(0,0,0,.2);
+  margin: 6px 0;
+}
+
+.guest {
+  text-align: center;
+  display: block;
+  color: var(--dorado-oscuro);
+  font-weight: 700;
+  text-decoration: none;
+}
