@@ -18,17 +18,17 @@
         </div>
 
         <nav class="nav" aria-label="Secciones de cuenta">
-          <a class="nav__item nav__item--active" href="#">
+          <a class="nav__item nav__item--active" href="mi_cuenta.html">
             <span class="nav__icon">👤</span>
             <span>Mi cuenta</span>
           </a>
-          <a class="nav__item" href="../../Cliente/Cliente_Layout/cliente_layout.html">
-            <span class="nav__icon">🏠</span>
-            <span>Volver a cliente</span>
+          <a class="nav__item" href="mi_cuenta_tarjetas.html">
+            <span class="nav__icon">💳</span>
+            <span>Tarjetas</span>
           </a>
-          <a class="nav__item" href="../../Vendedor/Vendedor_Layout/vendedor_layout.html">
-            <span class="nav__icon">🍽️</span>
-            <span>Volver a vendedor</span>
+          <a class="nav__item" href="mi_cuenta_resumen.html">
+            <span class="nav__icon">📊</span>
+            <span>Resumen</span>
           </a>
         </nav>
 
@@ -49,7 +49,7 @@
           <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
             <a href="../../Cliente/Cliente_Layout/cliente_layout.html" role="menuitem">Cliente</a>
             <a href="../../Vendedor/Vendedor_Layout/vendedor_layout.html" role="menuitem">Vendedor</a>
-            <a href="#" role="menuitem">Cerrar sesión</a>
+            <a href="../../index/index.html" role="menuitem">Cerrar sesión</a>
           </div>
         </div>
       </aside>
@@ -57,7 +57,7 @@
       <!-- MAIN -->
       <main class="main">
         <div class="main__inner">
-          <section class="card">
+          <section class="card card--full" id="perfil">
             <header class="card__header">
               <div>
                 <h1 class="card__title">Mi cuenta</h1>
@@ -140,6 +140,8 @@
       toggle?.setAttribute("aria-expanded", "false");
       menu.setAttribute("aria-hidden", "true");
     });
+
+    // Solo menú desplegable de usuario en esta pantalla.
   </script>
 </body>
 </html>

@@ -106,10 +106,19 @@ body {
   color: var(--muted);
 }
 
+.helper--lead {
+  margin: 0;
+}
+
 .link {
   color: var(--morado);
   font-weight: 700;
   text-decoration: none;
+}
+
+.link--center {
+  text-align: center;
+  display: block;
 }
 
 .divider {

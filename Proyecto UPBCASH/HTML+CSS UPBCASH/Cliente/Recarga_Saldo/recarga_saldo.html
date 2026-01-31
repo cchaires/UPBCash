@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Recarga de saldo</title>
+  <link rel="stylesheet" href="styles_recarga_saldo.css" />
+</head>
+
+<body>
+  <div class="page">
+    <div class="app-shell">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="../Cliente_Layout/imgupbcash-logo-c.png" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones del cliente">
+          <a class="nav__item" href="../Cliente_Layout/cliente_layout.html">
+            <span class="nav__icon">📍</span>
+            <span>Mapa</span>
+          </a>
+
+          <a class="nav__item" href="../Cliente_Layout/cliente_layout.html">
+            <span class="nav__icon">🕒</span>
+            <span>Historial</span>
+          </a>
+
+          <a class="nav__item nav__item--active" href="#">
+            <span class="nav__icon">💳</span>
+            <span>Recarga</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Cliente</div>
+          </div>
+
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menú de cuenta">
+            ▾
+          </button>
+
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="../../MiCuenta/MiCuenta_Layout/mi_cuenta.html" role="menuitem">Cuenta</a>
+            <a href="../../Vendedor/Vendedor_Layout/vendedor_layout.html" role="menuitem">Cambiar rol</a>
+            <a href="../../index/index.html" role="menuitem">Cerrar sesión</a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="main">
+        <div class="main__inner">
+          <section class="card">
+            <header class="card__header">
+              <div>
+                <h1 class="card__title">Recargar saldo</h1>
+                <p class="card__subtitle">Simulación de compra con PayPal.</p>
+              </div>
+              <a class="btn btn--ghost" href="../Cliente_Layout/cliente_layout.html">Volver</a>
+            </header>
+
+            <div class="checkout-grid">
+              <div>
+                <div class="paypal-banner">
+                  <div class="paypal-mark">
+                    <span>Pay</span><span>Pal</span>
+                  </div>
+                  <div>Pago seguro simulado</div>
+                </div>
+
+                <form class="field-grid" id="payForm">
+                  <div class="field">
+                    <label for="amount">Monto a recargar</label>
+                    <input id="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 100" required />
+                  </div>
+
+                  <div class="field">
+                    <label for="name">Nombre del titular</label>
+                    <input id="name" type="text" placeholder="Nombre completo" required />
+                  </div>
+
+                  <div class="field">
+                    <label for="card">Número de tarjeta</label>
+                    <input id="card" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="1234 5678 9012 3456" required />
+                  </div>
+
+                  <div class="inline">
+                    <div class="field">
+                      <label for="exp">Fecha de expiración</label>
+                      <input id="exp" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="MM/AA" required />
+                    </div>
+                    <div class="field">
+                      <label for="cvv">CVV</label>
+                      <input id="cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="123" required />
+                    </div>
+                  </div>
+
+                  <div class="actions">
+                    <button class="btn btn--primary" type="submit">Comprar saldo</button>
+                  </div>
+
+                  <div class="helper">Esta compra es una simulación para el prototipo.</div>
+                </form>
+              </div>
+
+              <aside class="summary">
+                <div class="summary__title">Resumen de pago</div>
+                <div class="summary__row">
+                  <span>Monto a recargar</span>
+                  <span id="amountValue">$0.00</span>
+                </div>
+                <div class="summary__row">
+                  <span>Comisión</span>
+                  <span>$0.00</span>
+                </div>
+                <div class="summary__row summary__total">
+                  <span>Total a pagar</span>
+                  <span id="totalValue">$0.00</span>
+                </div>
+                <div class="result" id="result">Pago simulado.</div>
+              </aside>
+            </div>
+          </section>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script src="../Cliente_Layout/dropdown_cliente.js"></script>
+  <script>
+    const amountInput = document.getElementById("amount");
+    const amountValue = document.getElementById("amountValue");
+    const totalValue = document.getElementById("totalValue");
+    const cardInput = document.getElementById("card");
+    const expInput = document.getElementById("exp");
+    const cvvInput = document.getElementById("cvv");
+    const form = document.getElementById("payForm");
+    const result = document.getElementById("result");
+
+    const digitsOnly = (value) => value.replace(/\D/g, "");
+
+    const formatCurrency = (value) => {
+      const number = Number(digitsOnly(String(value)));
+      if (!number || number <= 0) return "$0.00";
+      return `$${number.toFixed(2)}`;
+    };
+
+    const updateSummary = () => {
+      const value = digitsOnly(amountInput.value);
+      amountInput.value = value;
+      const formatted = formatCurrency(value);
+      amountValue.textContent = formatted;
+      totalValue.textContent = formatted;
+    };
+
+    amountInput?.addEventListener("input", updateSummary);
+
+    cardInput?.addEventListener("input", () => {
+      const digits = digitsOnly(cardInput.value).slice(0, 16);
+      const groups = digits.match(/.{1,4}/g) || [];
+      cardInput.value = groups.join(" ");
+    });
+
+    expInput?.addEventListener("input", () => {
+      const digits = digitsOnly(expInput.value).slice(0, 4);
+      const month = digits.slice(0, 2);
+      const year = digits.slice(2, 4);
+      expInput.value = year ? `${month}/${year}` : month;
+    });
+
+    cvvInput?.addEventListener("input", () => {
+      cvvInput.value = digitsOnly(cvvInput.value).slice(0, 3);
+    });
+
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      updateSummary();
+      const value = Number(digitsOnly(amountInput.value || 0));
+      result.textContent = value > 0
+        ? `Pago simulado por ${formatCurrency(value)} con PayPal.`
+        : "Pago simulado.";
+      result.style.display = "block";
+    });
+  </script>
+</body>
+</html>
