@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Mi cuenta</title>
+  <link rel="stylesheet" href="styles_mi_cuenta.css" />
+</head>
+
+<body>
+  <div class="page">
+    <div class="app-shell">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="../../Cliente/Cliente_Layout/imgupbcash-logo-c.png" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones de cuenta">
+          <a class="nav__item nav__item--active" href="#">
+            <span class="nav__icon">👤</span>
+            <span>Mi cuenta</span>
+          </a>
+          <a class="nav__item" href="../../Cliente/Cliente_Layout/cliente_layout.html">
+            <span class="nav__icon">🏠</span>
+            <span>Volver a cliente</span>
+          </a>
+          <a class="nav__item" href="../../Vendedor/Vendedor_Layout/vendedor_layout.html">
+            <span class="nav__icon">🍽️</span>
+            <span>Volver a vendedor</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Cuenta</div>
+          </div>
+
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menú de cuenta">
+            ▾
+          </button>
+
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="../../Cliente/Cliente_Layout/cliente_layout.html" role="menuitem">Cliente</a>
+            <a href="../../Vendedor/Vendedor_Layout/vendedor_layout.html" role="menuitem">Vendedor</a>
+            <a href="#" role="menuitem">Cerrar sesión</a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="main">
+        <div class="main__inner">
+          <section class="card">
+            <header class="card__header">
+              <div>
+                <h1 class="card__title">Mi cuenta</h1>
+                <p class="card__subtitle">Actualiza tus datos personales registrados.</p>
+              </div>
+              <div class="btn btn--ghost">Perfil activo</div>
+            </header>
+
+            <form class="form-grid">
+              <div class="field">
+                <label for="nombre">Nombre</label>
+                <input id="nombre" type="text" value="Fernando" />
+              </div>
+              <div class="field">
+                <label for="apellido">Apellido</label>
+                <input id="apellido" type="text" value="Gómez" />
+              </div>
+              <div class="field">
+                <label for="correo">Correo institucional</label>
+                <input id="correo" type="email" value="fernando@upb.edu.mx" />
+              </div>
+              <div class="field">
+                <label for="telefono">Teléfono</label>
+                <input id="telefono" type="tel" value="(222) 123 4567" />
+              </div>
+              <div class="field">
+                <label for="matricula">Matrícula</label>
+                <input id="matricula" type="text" value="UPB-2023-0456" />
+              </div>
+              <div class="field">
+                <label for="carrera">Carrera</label>
+                <select id="carrera">
+                  <option>Ingeniería en Software</option>
+                  <option>Administración</option>
+                  <option>Diseño</option>
+                  <option>Negocios</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="direccion">Dirección</label>
+                <input id="direccion" type="text" value="Av. Universidad 123, Puebla" />
+              </div>
+              <div class="field">
+                <label for="password">Contraseña</label>
+                <input id="password" type="password" value="12345678" />
+              </div>
+              <div class="field">
+                <label for="confirm">Confirmar contraseña</label>
+                <input id="confirm" type="password" value="12345678" />
+              </div>
+            </form>
+
+            <div class="actions">
+              <button class="btn btn--ghost" type="button">Cancelar</button>
+              <button class="btn btn--primary" type="button">Guardar cambios</button>
+            </div>
+            <div class="helper">Tus datos se reflejarán en el perfil de cliente y vendedor.</div>
+          </section>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script>
+    const toggle = document.getElementById("userToggle");
+    const menu = document.getElementById("userMenu");
+
+    toggle?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = menu.classList.contains("is-open");
+      menu.classList.toggle("is-open", !isOpen);
+      toggle.setAttribute("aria-expanded", String(!isOpen));
+      menu.setAttribute("aria-hidden", String(isOpen));
+    });
+
+    document.addEventListener("click", () => {
+      if (!menu) return;
+      menu.classList.remove("is-open");
+      toggle?.setAttribute("aria-expanded", "false");
+      menu.setAttribute("aria-hidden", "true");
+    });
+  </script>
+</body>
+</html>
