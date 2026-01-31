@@ -1,0 +1,48 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash • Recuperar contraseña</title>
+
+  <link rel="stylesheet" href="{% static 'core/css/index.css' %}">
+</head>
+
+<body>
+  <main class="page">
+    <section class="card">
+
+      <header class="card__header">
+        <img
+          class="brand__logo"
+          src="{% static 'core/img/imgupbcash-logo.png' %}"
+          alt="UPBCash"
+        />
+      </header>
+
+      <div class="card__body">
+        <form class="form">
+          <p class="helper helper--lead">
+            Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.
+          </p>
+
+          <input
+            class="input"
+            type="email"
+            placeholder="Correo institucional"
+            required
+          />
+
+          <button class="btn btn--primary" type="submit">
+            Enviar correo de recuperación
+          </button>
+
+          <a href="{% url 'index' %}" class="link link--center">Volver a iniciar sesión</a>
+        </form>
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>

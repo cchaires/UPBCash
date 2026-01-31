@@ -70,11 +70,16 @@
 
             <div class="balance-row">
               <div class="balance-label">Saldo disponible:</div>
-              <div class="balance-amount">$100</div>
+              <div class="balance-amount" id="balanceAmount">$0.00</div>
 
-              <a class="btn btn--ghost" href="../Recarga_Saldo/recarga_saldo.html">
-                Recarga saldo
-              </a>
+              <div class="balance-actions">
+                <div class="saldo-pill">
+                  Saldo actual: <span id="saldoValue">$0.00</span>
+                </div>
+                <a class="btn btn--ghost" href="../Recarga_Saldo/recarga_saldo.html">
+                  Recarga saldo
+                </a>
+              </div>
             </div>
 
             <button class="btn btn--primary" type="button">
@@ -89,6 +94,18 @@
 
   <!-- Si tu archivo se llama dropdown_cliente_js SIN .js, cámbialo a .js -->
   <script src="dropdown_cliente.js"></script>
+  <script>
+    const saldoEl = document.getElementById("saldoValue");
+    const balanceAmountEl = document.getElementById("balanceAmount");
+    const saldoStored = localStorage.getItem("upbcash_saldo");
+    const saldoValue = Number(saldoStored ?? 0);
+    if (saldoEl) {
+      saldoEl.textContent = `$${saldoValue.toFixed(2)}`;
+    }
+    if (balanceAmountEl) {
+      balanceAmountEl.textContent = `$${saldoValue.toFixed(2)}`;
+    }
+  </script>
 </body>
 </html>
 

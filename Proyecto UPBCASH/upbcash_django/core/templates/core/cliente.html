@@ -1,0 +1,106 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Cliente</title>
+  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
+</head>
+
+<body>
+  <div class="page">
+    <div class="app-shell">
+
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
+        </div>
+
+        <nav class="nav">
+          <a class="nav__item nav__item--active" href="#">
+            <span class="nav__icon">📍</span>
+            <span>Mapa</span>
+          </a>
+
+          <a class="nav__item" href="#">
+            <span class="nav__icon">🕒</span>
+            <span>Historial</span>
+          </a>
+
+          <a class="nav__item" href="{% url 'recarga' %}">
+            <span class="nav__icon">💳</span>
+            <span>Recarga</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Cliente</div>
+          </div>
+
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menú de cuenta">
+            ▾
+          </button>
+
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
+            <a href="{% url 'vendedor' %}" role="menuitem">Cambiar rol</a>
+            <a href="{% url 'index' %}" role="menuitem">Cerrar sesión</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main__inner">
+          <section class="card">
+            <div class="card__banner">
+              <img src="{% static 'core/img/evento-banner.png' %}" alt="Banner del evento" />
+            </div>
+
+            <h1 class="event-title">Noche Mexicana</h1>
+
+            <div class="balance-row">
+              <div class="balance-label">Saldo disponible:</div>
+              <div class="balance-amount" id="balanceAmount">$0.00</div>
+
+              <div class="balance-actions">
+                <div class="saldo-pill">
+                  Saldo actual: <span id="saldoValue">$0.00</span>
+                </div>
+                <a class="btn btn--ghost" href="{% url 'recarga' %}">
+                  Recarga saldo
+                </a>
+              </div>
+            </div>
+
+            <button class="btn btn--primary" type="button">
+              Explorar Menú
+            </button>
+          </section>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+  <script>
+    const saldoEl = document.getElementById("saldoValue");
+    const balanceAmountEl = document.getElementById("balanceAmount");
+    const saldoStored = localStorage.getItem("upbcash_saldo");
+    const saldoValue = Number(saldoStored ?? 0);
+    if (saldoEl) {
+      saldoEl.textContent = `$${saldoValue.toFixed(2)}`;
+    }
+    if (balanceAmountEl) {
+      balanceAmountEl.textContent = `$${saldoValue.toFixed(2)}`;
+    }
+  </script>
+</body>
+</html>

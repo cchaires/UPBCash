@@ -1,0 +1,64 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash • Iniciar sesión</title>
+
+  <link rel="stylesheet" href="{% static 'core/css/index.css' %}">
+</head>
+
+<body>
+  <main class="page">
+    <section class="card">
+
+      <header class="card__header">
+        <img
+          class="brand__logo"
+          src="{% static 'core/img/imgupbcash-logo.png' %}"
+          alt="UPBCash"
+        />
+      </header>
+
+      <div class="card__body">
+        <form class="form" action="{% url 'cliente' %}">
+
+          <input
+            class="input"
+            type="text"
+            placeholder="Matrícula / Correo"
+            required
+          />
+
+          <input
+            class="input"
+            type="password"
+            placeholder="Contraseña"
+            required
+          />
+
+          <a href="{% url 'recuperar' %}" class="link link--center">¿Olvidaste tu contraseña?</a>
+
+          <button class="btn btn--primary" type="submit">
+            Iniciar sesión
+          </button>
+
+          <p class="helper">
+            ¿No tienes cuenta?
+            <a href="#" class="link">Registrarse</a>
+          </p>
+
+          <hr class="divider">
+
+          <a href="#" class="guest">
+            Entrar como invitado
+          </a>
+
+        </form>
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>
