@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>UPBCash • Cliente</title>
+  <title>UPBCash  Cliente</title>
   <style>
     :root{
       --bg1:#5B137E;
@@ -33,7 +33,7 @@
       padding:22px;
     }
 
-    /* “pantalla” estilo app */
+    /* pantalla estilo app */
     .screen{
       width: min(420px, 100%);
       border-radius: var(--radius);
@@ -66,7 +66,7 @@
       display:flex;
       flex-direction:column;
       gap: 14px;
-      min-height: 640px; /* para que se sienta “pantalla” */
+      min-height: 640px; /* para que se sienta pantalla */
       background:
         radial-gradient(700px 220px at 50% 0%, rgba(0,0,0,.06), transparent 60%),
         var(--card);
@@ -149,7 +149,7 @@
     .btnPrimary:hover{ filter: brightness(1.02); }
     .btnPrimary:active{ transform: scale(.985); }
 
-    /* espacio vacío como en el wireframe */
+    /* espacio vaco como en el wireframe */
     .spacer{
       flex:1;
       border: 1px dashed rgba(0,0,0,.08);
@@ -190,7 +190,7 @@
       color: var(--bg1);
     }
 
-    /* etiqueta de rol (opcional “Cliente”) */
+    /* etiqueta de rol (opcional Cliente) */
     .roleLabel{
       text-align:center;
       padding: 10px 0 14px;
@@ -231,26 +231,32 @@
 
       <!-- CTA -->
       <div class="ctaWrap">
-        <button class="btnPrimary" type="button">Explorar Menú</button>
+        <button class="btnPrimary" type="button">Explorar Men</button>
       </div>
 
-      <!-- Área vacía (wireframe) -->
+      <!-- rea vaca (wireframe) -->
       <div class="spacer" aria-hidden="true"></div>
 
     </div>
 
     <!-- NAV -->
-    <nav class="bottomNav" aria-label="Navegación">
+        <nav class="bottomNav" aria-label="Navegacion">
+      <a class="navItem" href="../Cliente_Layout/cliente_layout.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M3 11l9-7 9 7"/>
+          <path d="M5 10v10h14V10"/>
+        </svg>
+        Inicio
+      </a>
+
       <a class="navItem active" href="#">
-        <!-- icono menú -->
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
-        Menú
+        Menu
       </a>
 
       <a class="navItem" href="#">
-        <!-- icono mapa -->
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M12 21s7-4.6 7-11a7 7 0 0 0-14 0c0 6.4 7 11 7 11z"/>
           <circle cx="12" cy="10" r="2.5"/>
@@ -259,7 +265,6 @@
       </a>
 
       <a class="navItem" href="#">
-        <!-- icono historial -->
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M3 12a9 9 0 1 0 3-6.7"/>
           <path d="M3 4v5h5"/>
@@ -267,18 +272,18 @@
         </svg>
         Historial
       </a>
-
-      <a class="navItem" href="#">
-        <!-- icono usuario -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <path d="M20 21a8 8 0 0 0-16 0"/>
-          <circle cx="12" cy="8" r="4"/>
-        </svg>
-        Cliente
-      </a>
     </nav>
 
     <div class="roleLabel">Cliente</div>
   </div>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
