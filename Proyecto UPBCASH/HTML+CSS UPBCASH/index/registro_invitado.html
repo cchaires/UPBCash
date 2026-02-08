@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Registro Invitado</title>
+
+  <!-- Conexion con el CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <main class="page">
+    <section class="card">
+      <header class="card__header">
+        <img
+          class="brand__logo"
+          src="imgupbcash-logo.png"
+          alt="UPBCash"
+        />
+      </header>
+
+      <div class="card__body">
+        <form id="registro-invitado" class="form" action="#" novalidate>
+          <p class="helper helper--lead">Registro rapido para invitado</p>
+
+          <input
+            class="input"
+            type="email"
+            id="inv-correo"
+            name="inv_correo"
+            placeholder="Correo del invitado"
+            autocomplete="email"
+            required
+          />
+          <p class="error" id="error-inv-correo"></p>
+
+          <input
+            class="input"
+            type="text"
+            id="inv-nombres"
+            name="inv_nombres"
+            placeholder="Nombres"
+            autocomplete="given-name"
+            required
+          />
+          <p class="error" id="error-inv-nombres"></p>
+
+          <input
+            class="input"
+            type="text"
+            id="inv-apellidos"
+            name="inv_apellidos"
+            placeholder="Apellidos"
+            autocomplete="family-name"
+            required
+          />
+          <p class="error" id="error-inv-apellidos"></p>
+
+          <input
+            class="input"
+            type="email"
+            id="inv-anfitrion-correo"
+            name="inv_anfitrion_correo"
+            placeholder="Correo institucional del invitador"
+            autocomplete="email"
+          />
+
+          <input
+            class="input"
+            type="text"
+            id="inv-anfitrion-matricula"
+            name="inv_anfitrion_matricula"
+            placeholder="Matricula del invitador"
+            autocomplete="off"
+          />
+          <p class="error" id="error-inv-anfitrion"></p>
+
+          <input
+            class="input"
+            type="tel"
+            id="inv-telefono"
+            name="inv_telefono"
+            placeholder="Telefono (opcional)"
+            autocomplete="tel"
+          />
+          <p class="error" id="error-inv-telefono"></p>
+
+          <button class="btn btn--primary" type="submit">
+            Crear cuenta de invitado
+          </button>
+
+          <p class="helper">
+            Ya tienes cuenta?
+            <a href="index.html" class="link">Iniciar sesion</a>
+          </p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("registro-invitado");
+    const correoInvitador = document.getElementById("inv-anfitrion-correo");
+    const matriculaInvitador = document.getElementById("inv-anfitrion-matricula");
+    const errorInvitador = document.getElementById("error-inv-anfitrion");
+
+    form.addEventListener("submit", (event) => {
+      const tieneCorreo = correoInvitador.value.trim().length > 0;
+      const tieneMatricula = matriculaInvitador.value.trim().length > 0;
+
+      if (!tieneCorreo && !tieneMatricula) {
+        event.preventDefault();
+        errorInvitador.textContent = "Ingresa correo o matricula del invitador.";
+        errorInvitador.classList.add("error--visible");
+        correoInvitador.classList.add("input--error");
+        matriculaInvitador.classList.add("input--error");
+        return;
+      }
+
+      errorInvitador.textContent = "";
+      errorInvitador.classList.remove("error--visible");
+      correoInvitador.classList.remove("input--error");
+      matriculaInvitador.classList.remove("input--error");
+    });
+
+    [correoInvitador, matriculaInvitador].forEach((field) => {
+      field.addEventListener("input", () => {
+        errorInvitador.textContent = "";
+        errorInvitador.classList.remove("error--visible");
+        correoInvitador.classList.remove("input--error");
+        matriculaInvitador.classList.remove("input--error");
+      });
+    });
+  </script>
+</body>
+</html>

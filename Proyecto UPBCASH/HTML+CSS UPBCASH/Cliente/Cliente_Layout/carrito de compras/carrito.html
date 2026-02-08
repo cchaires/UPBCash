@@ -22,11 +22,15 @@
             <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></span><span>Inicio</span>
           </a>
 
-          <a class="nav__item" href="cliente_mapa.html"><span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-4.6 7-11a7 7 0 0 0-14 0c0 6.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span>Mapa</span>
+          <a class="nav__item" href="../cliente_mapa.html"><span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-4.6 7-11a7 7 0 0 0-14 0c0 6.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span>Mapa</span>
           </a>
 
-          <a class="nav__item" href="../../historial_alimentos/historial_alimentos.html">
-            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v8"/><path d="M10 2v8"/><path d="M2 6h12"/><path d="M14 2h4a2 2 0 0 1 2 2v18"/></svg></span><span>Historial alimentos</span>
+          <a class="nav__item" href="../menu_alimentos.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16"/><path d="M4 8h16"/><path d="M4 13h16"/><path d="M4 18h10"/></svg></span><span>Menu alimentos</span>
+          </a>
+
+          <a class="nav__item" href="../../historial_compras/historial_compras.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v8"/><path d="M10 2v8"/><path d="M2 6h12"/><path d="M14 2h4a2 2 0 0 1 2 2v18"/></svg></span><span>Historial compras</span>
           </a>
 
           <a class="nav__item" href="../../Recarga_Saldo/recarga_saldo.html">
@@ -66,7 +70,29 @@
           </header>
 
           <section class="card">
-            <div class="list" id="cartList"></div>
+            <div class="list">
+              <div class="list-item">
+                <div>
+                  <div class="list-item__title">Tacos al pastor</div>
+                  <div class="list-item__meta">Cantidad: 1</div>
+                </div>
+                <div class="list-item__price">
+                  $45.00
+                  <button class="btn-remove-item" type="button">Eliminar</button>
+                </div>
+              </div>
+
+              <div class="list-item">
+                <div>
+                  <div class="list-item__title">Cafe de olla</div>
+                  <div class="list-item__meta">Cantidad: 2</div>
+                </div>
+                <div class="list-item__price">
+                  $56.00
+                  <button class="btn-remove-item" type="button">Eliminar</button>
+                </div>
+              </div>
+            </div>
 
             <div class="list-item" style="margin-top: 12px;">
               <div>
@@ -76,13 +102,14 @@
               <div class="list-item__price" id="creditsValue">$0.00</div>
             </div>
 
-            <div class="summary-row" id="cartTotal" style="margin-top: 16px;">
+            <div class="summary-row" style="margin-top: 16px;">
               <span>Total</span>
-              <span>$0.00</span>
+              <span>$101.00</span>
             </div>
 
             <div class="actions-row" style="margin-top: 16px;">
               <a class="btn btn--secondary" href="../menu_alimentos.html">Seguir comprando</a>
+              <button class="btn btn--secondary" id="clearCartBtn" type="button">Limpiar carrito</button>
               <button class="btn btn--primary" id="payBtn" type="button">Pagar</button>
             </div>
           </section>
@@ -93,7 +120,6 @@
   </div>
 
   <script src="../dropdown_cliente.js"></script>
-  
 </body>
 </html>
 

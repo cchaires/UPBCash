@@ -61,104 +61,201 @@
           </header>
 
           <section class="panel">
-            <div class="menu-grid">
-              <article class="menu-item">
-                <div class="item__photo item__photo--taco">Foto del taco</div>
-                <div class="item__name">Tacos al pastor</div>
-                <div class="item__desc">Orden con pina, cilantro y cebolla.</div>
-                <div class="item__price-edit">
+            <div class="menu-actions">
+              <p class="menu-hint">Agrega o quita platillos y ajusta su disponibilidad.</p>
+              <button class="btn-add" type="button">Agregar alimento</button>
+            </div>
+
+            <div class="menu-list">
+              <div class="menu-row menu-row--head">
+                <div>Foto</div>
+                <div>Producto</div>
+                <div>Precio</div>
+                <div>Cantidad</div>
+                <div>Disponibilidad</div>
+              </div>
+
+              <article class="menu-row">
+                <div class="menu-cell menu-cell--photo">
+                  <div class="item__thumb item__photo--taco">Foto del taco</div>
+                  <label class="file-label">
+                    <input class="file-input" type="file" accept="image/*" />
+                    Cambiar foto
+                  </label>
+                </div>
+                <div class="menu-cell menu-cell--info">
+                  <div class="item__name">Tacos al pastor</div>
+                  <div class="item__desc">Orden con pina, cilantro y cebolla.</div>
+                  <button class="btn-remove" type="button">Quitar del menu</button>
+                </div>
+                <div class="menu-cell">
                   <label>Precio</label>
                   <input class="price-input" type="text" value="$45" />
                 </div>
-                <div class="item__controls">
+                <div class="menu-cell">
+                  <label>Cantidad</label>
+                  <input class="qty-input" type="number" min="0" value="24" />
+                </div>
+                <div class="menu-cell">
                   <label>Disponibilidad</label>
                   <div class="status-buttons">
                     <button class="btn btn--status btn--status-ok" type="button">Disponible</button>
+                    <button class="btn btn--status btn--status-low" type="button">Por terminar</button>
                     <button class="btn btn--status btn--status-out" type="button">Agotado</button>
                   </div>
                 </div>
               </article>
 
-              <article class="menu-item">
-                <div class="item__photo item__photo--cafe">Foto del cafe</div>
-                <div class="item__name">Cafe de olla</div>
-                <div class="item__desc">Canela y piloncillo, 12 oz.</div>
-                <div class="item__price-edit">
+              <article class="menu-row">
+                <div class="menu-cell menu-cell--photo">
+                  <div class="item__thumb item__photo--cafe">Foto del cafe</div>
+                  <label class="file-label">
+                    <input class="file-input" type="file" accept="image/*" />
+                    Cambiar foto
+                  </label>
+                </div>
+                <div class="menu-cell menu-cell--info">
+                  <div class="item__name">Cafe de olla</div>
+                  <div class="item__desc">Canela y piloncillo, 12 oz.</div>
+                  <button class="btn-remove" type="button">Quitar del menu</button>
+                </div>
+                <div class="menu-cell">
                   <label>Precio</label>
                   <input class="price-input" type="text" value="$28" />
                 </div>
-                <div class="item__controls">
+                <div class="menu-cell">
+                  <label>Cantidad</label>
+                  <input class="qty-input" type="number" min="0" value="18" />
+                </div>
+                <div class="menu-cell">
                   <label>Disponibilidad</label>
                   <div class="status-buttons">
                     <button class="btn btn--status btn--status-ok" type="button">Disponible</button>
+                    <button class="btn btn--status btn--status-low" type="button">Por terminar</button>
                     <button class="btn btn--status btn--status-out" type="button">Agotado</button>
                   </div>
                 </div>
               </article>
 
-              <article class="menu-item">
-                <div class="item__photo item__photo--agua">Foto del agua</div>
-                <div class="item__name">Agua de jamaica</div>
-                <div class="item__desc">Recien preparada, 16 oz.</div>
-                <div class="item__price-edit">
+              <article class="menu-row">
+                <div class="menu-cell menu-cell--photo">
+                  <div class="item__thumb item__photo--agua">Foto del agua</div>
+                  <label class="file-label">
+                    <input class="file-input" type="file" accept="image/*" />
+                    Cambiar foto
+                  </label>
+                </div>
+                <div class="menu-cell menu-cell--info">
+                  <div class="item__name">Agua de jamaica</div>
+                  <div class="item__desc">Recien preparada, 16 oz.</div>
+                  <button class="btn-remove" type="button">Quitar del menu</button>
+                </div>
+                <div class="menu-cell">
                   <label>Precio</label>
                   <input class="price-input" type="text" value="$22" />
                 </div>
-                <div class="item__controls">
+                <div class="menu-cell">
+                  <label>Cantidad</label>
+                  <input class="qty-input" type="number" min="0" value="30" />
+                </div>
+                <div class="menu-cell">
                   <label>Disponibilidad</label>
                   <div class="status-buttons">
                     <button class="btn btn--status btn--status-ok" type="button">Disponible</button>
+                    <button class="btn btn--status btn--status-low" type="button">Por terminar</button>
                     <button class="btn btn--status btn--status-out" type="button">Agotado</button>
                   </div>
                 </div>
               </article>
 
-              <article class="menu-item">
-                <div class="item__photo item__photo--postre">Foto del postre</div>
-                <div class="item__name">Cheesecake fresa</div>
-                <div class="item__desc">Rebanada individual, cremosa.</div>
-                <div class="item__price-edit">
+              <article class="menu-row">
+                <div class="menu-cell menu-cell--photo">
+                  <div class="item__thumb item__photo--postre">Foto del postre</div>
+                  <label class="file-label">
+                    <input class="file-input" type="file" accept="image/*" />
+                    Cambiar foto
+                  </label>
+                </div>
+                <div class="menu-cell menu-cell--info">
+                  <div class="item__name">Cheesecake fresa</div>
+                  <div class="item__desc">Rebanada individual, cremosa.</div>
+                  <button class="btn-remove" type="button">Quitar del menu</button>
+                </div>
+                <div class="menu-cell">
                   <label>Precio</label>
                   <input class="price-input" type="text" value="$38" />
                 </div>
-                <div class="item__controls">
+                <div class="menu-cell">
+                  <label>Cantidad</label>
+                  <input class="qty-input" type="number" min="0" value="12" />
+                </div>
+                <div class="menu-cell">
                   <label>Disponibilidad</label>
                   <div class="status-buttons">
                     <button class="btn btn--status btn--status-ok" type="button">Disponible</button>
+                    <button class="btn btn--status btn--status-low" type="button">Por terminar</button>
                     <button class="btn btn--status btn--status-out" type="button">Agotado</button>
                   </div>
                 </div>
               </article>
 
-              <article class="menu-item">
-                <div class="item__photo item__photo--ensalada">Foto de ensalada</div>
-                <div class="item__name">Ensalada verde</div>
-                <div class="item__desc">Mix de hojas, aderezo citrico.</div>
-                <div class="item__price-edit">
+              <article class="menu-row">
+                <div class="menu-cell menu-cell--photo">
+                  <div class="item__thumb item__photo--ensalada">Foto de ensalada</div>
+                  <label class="file-label">
+                    <input class="file-input" type="file" accept="image/*" />
+                    Cambiar foto
+                  </label>
+                </div>
+                <div class="menu-cell menu-cell--info">
+                  <div class="item__name">Ensalada verde</div>
+                  <div class="item__desc">Mix de hojas, aderezo citrico.</div>
+                  <button class="btn-remove" type="button">Quitar del menu</button>
+                </div>
+                <div class="menu-cell">
                   <label>Precio</label>
                   <input class="price-input" type="text" value="$40" />
                 </div>
-                <div class="item__controls">
+                <div class="menu-cell">
+                  <label>Cantidad</label>
+                  <input class="qty-input" type="number" min="0" value="15" />
+                </div>
+                <div class="menu-cell">
                   <label>Disponibilidad</label>
                   <div class="status-buttons">
                     <button class="btn btn--status btn--status-ok" type="button">Disponible</button>
+                    <button class="btn btn--status btn--status-low" type="button">Por terminar</button>
                     <button class="btn btn--status btn--status-out" type="button">Agotado</button>
                   </div>
                 </div>
               </article>
 
-              <article class="menu-item">
-                <div class="item__photo item__photo--combo">Foto del combo</div>
-                <div class="item__name">Combo campus</div>
-                <div class="item__desc">2 tacos + bebida + postre.</div>
-                <div class="item__price-edit">
+              <article class="menu-row">
+                <div class="menu-cell menu-cell--photo">
+                  <div class="item__thumb item__photo--combo">Foto del combo</div>
+                  <label class="file-label">
+                    <input class="file-input" type="file" accept="image/*" />
+                    Cambiar foto
+                  </label>
+                </div>
+                <div class="menu-cell menu-cell--info">
+                  <div class="item__name">Combo campus</div>
+                  <div class="item__desc">2 tacos + bebida + postre.</div>
+                  <button class="btn-remove" type="button">Quitar del menu</button>
+                </div>
+                <div class="menu-cell">
                   <label>Precio</label>
                   <input class="price-input" type="text" value="$95" />
                 </div>
-                <div class="item__controls">
+                <div class="menu-cell">
+                  <label>Cantidad</label>
+                  <input class="qty-input" type="number" min="0" value="10" />
+                </div>
+                <div class="menu-cell">
                   <label>Disponibilidad</label>
                   <div class="status-buttons">
                     <button class="btn btn--status btn--status-ok" type="button">Disponible</button>
+                    <button class="btn btn--status btn--status-low" type="button">Por terminar</button>
                     <button class="btn btn--status btn--status-out" type="button">Agotado</button>
                   </div>
                 </div>
