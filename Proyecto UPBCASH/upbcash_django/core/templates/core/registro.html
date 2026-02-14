@@ -1,0 +1,164 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Registro</title>
+  <link rel="stylesheet" href="{% static 'core/css/index.css' %}">
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <header class="card__header">
+        <img
+          class="brand__logo"
+          src="{% static 'core/img/imgupbcash-logo.png' %}"
+          alt="UPBCash"
+        />
+      </header>
+
+      <div class="card__body">
+        <form id="registro-form" class="form" method="post" action="{% url 'registro' %}" novalidate>
+          {% csrf_token %}
+          {% if error_message %}
+          <p class="error error--visible">{{ error_message }}</p>
+          {% endif %}
+          <div class="segmented" role="radiogroup" aria-label="Tipo de cuenta">
+            <input class="segmented__input" type="radio" name="tipo" id="tipo-comunidad" value="comunidad" checked>
+            <label class="segmented__label" for="tipo-comunidad">Comunidad UPBC</label>
+
+            <input class="segmented__input" type="radio" name="tipo" id="tipo-invitado" value="invitado">
+            <label class="segmented__label" for="tipo-invitado">Invitado</label>
+          </div>
+
+          <div class="field-group" data-group="comunidad">
+            <input
+              class="input"
+              type="text"
+              id="upbc-matricula"
+              name="upbc_matricula"
+              placeholder="Matricula (opcional)"
+              autocomplete="off"
+            />
+            <p class="error" id="error-upbc-matricula"></p>
+
+            <input
+              class="input"
+              type="email"
+              id="upbc-correo"
+              name="upbc_correo"
+              placeholder="Correo institucional @upbc.edu.mx"
+              autocomplete="email"
+            />
+            <p class="error" id="error-upbc-correo"></p>
+
+            <input
+              class="input"
+              type="tel"
+              id="upbc-telefono"
+              name="upbc_telefono"
+              placeholder="Telefono (opcional)"
+              autocomplete="tel"
+            />
+            <p class="error" id="error-upbc-telefono"></p>
+          </div>
+
+          <div class="field-group field-group--hidden" data-group="invitado">
+            <input
+              class="input"
+              type="email"
+              id="inv-correo"
+              name="inv_correo"
+              placeholder="Correo personal"
+              autocomplete="email"
+            />
+            <p class="error" id="error-inv-correo"></p>
+
+            <input
+              class="input"
+              type="text"
+              id="inv-anfitrion-matricula"
+              name="inv_anfitrion_matricula"
+              placeholder="Matricula del invitador (opcional)"
+              autocomplete="off"
+            />
+            <p class="error" id="error-inv-anfitrion-matricula"></p>
+
+            <input
+              class="input"
+              type="email"
+              id="inv-anfitrion-correo"
+              name="inv_anfitrion_correo"
+              placeholder="Correo institucional del invitador"
+              autocomplete="email"
+            />
+            <p class="error" id="error-inv-anfitrion-correo"></p>
+
+            <input
+              class="input"
+              type="tel"
+              id="inv-telefono"
+              name="inv_telefono"
+              placeholder="Telefono (opcional)"
+              autocomplete="tel"
+            />
+            <p class="error" id="error-inv-telefono"></p>
+          </div>
+
+          <input
+            class="input"
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Contrasena"
+            autocomplete="new-password"
+            required
+          />
+          <p class="error" id="error-password"></p>
+
+          <input
+            class="input"
+            type="password"
+            id="password-confirm"
+            name="password_confirm"
+            placeholder="Confirmar contrasena"
+            autocomplete="new-password"
+            required
+          />
+          <p class="error" id="error-password-confirm"></p>
+
+          <button class="btn btn--primary" type="submit">
+            Crear cuenta
+          </button>
+
+          <p class="helper">
+            Ya tienes cuenta?
+            <a href="{% url 'index' %}" class="link">Iniciar sesion</a>
+          </p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const tipoRadios = document.querySelectorAll('input[name="tipo"]');
+    const groups = document.querySelectorAll(".field-group[data-group]");
+
+    const updateGroupVisibility = () => {
+      const selected = document.querySelector('input[name="tipo"]:checked');
+      const selectedValue = selected?.value;
+      groups.forEach((group) => {
+        const isActive = group.dataset.group === selectedValue;
+        group.classList.toggle("field-group--hidden", !isActive);
+      });
+    };
+
+    tipoRadios.forEach((radio) => {
+      radio.addEventListener("change", updateGroupVisibility);
+    });
+
+    updateGroupVisibility();
+  </script>
+</body>
+</html>

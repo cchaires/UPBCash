@@ -19,16 +19,16 @@
 
         <nav class="nav" aria-label="Secciones del cliente">
           <a class="nav__item" href="{% url 'cliente' %}">
-            <span class="nav__icon">📍</span>
-            <span>Mapa</span>
+            <span class="nav__icon">🏠</span>
+            <span>Inicio</span>
           </a>
 
-          <a class="nav__item" href="{% url 'cliente' %}">
+          <a class="nav__item" href="{% url 'historial_recargas' %}">
             <span class="nav__icon">🕒</span>
-            <span>Historial</span>
+            <span>Historial recargas</span>
           </a>
 
-          <a class="nav__item nav__item--active" href="#">
+          <a class="nav__item nav__item--active" href="{% url 'recarga' %}">
             <span class="nav__icon">💳</span>
             <span>Recarga</span>
           </a>
@@ -51,7 +51,7 @@
           <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
             <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
             <a href="{% url 'vendedor' %}" role="menuitem">Cambiar rol</a>
-            <a href="{% url 'index' %}" role="menuitem">Cerrar sesión</a>
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesión</a>
           </div>
         </div>
       </aside>
@@ -65,10 +65,19 @@
                 <p class="card__subtitle">Simulación de compra con PayPal.</p>
               </div>
               <div class="saldo-pill saldo-pill--header">
-                Saldo actual: <span id="saldoValue">$0.00</span>
+                Saldo actual: <span id="saldoValue">${{ saldo_actual|floatformat:2 }}</span>
               </div>
               <a class="btn btn--ghost" href="{% url 'cliente' %}">Volver</a>
             </header>
+
+            {% if error_message %}
+            <p class="helper" style="color:#b00020; margin: 0 0 12px;">{{ error_message }}</p>
+            {% endif %}
+            {% if messages %}
+            {% for message in messages %}
+            <p class="helper" style="color:#2f8f5b; margin: 0 0 12px;">{{ message }}</p>
+            {% endfor %}
+            {% endif %}
 
             <div class="checkout-grid">
               <div>
@@ -79,30 +88,31 @@
                   <div>Pago seguro simulado</div>
                 </div>
 
-                <form class="field-grid" id="payForm">
+                <form class="field-grid" id="payForm" method="post" action="{% url 'recarga' %}">
+                  {% csrf_token %}
                   <div class="field">
                     <label for="amount">Monto a recargar</label>
-                    <input id="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 100" required />
+                    <input id="amount" name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 100" required />
                   </div>
 
                   <div class="field">
                     <label for="name">Nombre del titular</label>
-                    <input id="name" type="text" placeholder="Nombre completo" required />
+                    <input id="name" name="holder_name" type="text" placeholder="Nombre completo" required />
                   </div>
 
                   <div class="field">
                     <label for="card">Número de tarjeta</label>
-                    <input id="card" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="1234 5678 9012 3456" required />
+                    <input id="card" name="card" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="1234 5678 9012 3456" required />
                   </div>
 
                   <div class="inline">
                     <div class="field">
                       <label for="exp">Fecha de expiración</label>
-                      <input id="exp" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="MM/AA" required />
+                      <input id="exp" name="exp" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="MM/AA" required />
                     </div>
                     <div class="field">
                       <label for="cvv">CVV</label>
-                      <input id="cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="123" required />
+                      <input id="cvv" name="cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="123" required />
                     </div>
                   </div>
 
@@ -138,8 +148,11 @@
     </div>
   </div>
 
+  <script src="{% static 'core/js/saldo_cliente.js' %}"></script>
   <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
   <script>
+    setUpbcashSaldo({{ saldo_actual|floatformat:2 }});
+
     const amountInput = document.getElementById("amount");
     const amountValue = document.getElementById("amountValue");
     const totalValue = document.getElementById("totalValue");
@@ -147,14 +160,11 @@
     const expInput = document.getElementById("exp");
     const cvvInput = document.getElementById("cvv");
     const form = document.getElementById("payForm");
-    const result = document.getElementById("result");
     const saldoEl = document.getElementById("saldoValue");
 
-    const getSaldo = () => Number(localStorage.getItem("upbcash_saldo") ?? 0);
-    const setSaldo = (value) => localStorage.setItem("upbcash_saldo", String(value));
     const updateSaldo = () => {
-      const current = getSaldo();
-      if (saldoEl) saldoEl.textContent = `$${current.toFixed(2)}`;
+      const current = getUpbcashSaldo();
+      if (saldoEl) saldoEl.textContent = formatUpbcashCurrency(current);
     };
 
     const digitsOnly = (value) => value.replace(/\D/g, "");
@@ -162,7 +172,7 @@
     const formatCurrency = (value) => {
       const number = Number(digitsOnly(String(value)));
       if (!number || number <= 0) return "$0.00";
-      return `$${number.toFixed(2)}`;
+      return formatUpbcashCurrency(number);
     };
 
     const updateSummary = () => {
@@ -193,20 +203,15 @@
     });
 
     form?.addEventListener("submit", (event) => {
-      event.preventDefault();
       updateSummary();
       const value = Number(digitsOnly(amountInput.value || 0));
-      if (value > 0) {
-        const nuevoSaldo = getSaldo() + value;
-        setSaldo(nuevoSaldo);
-        updateSaldo();
+      amountInput.value = String(value);
+      if (value <= 0) {
+        event.preventDefault();
       }
-      result.textContent = value > 0
-        ? `Pago simulado por ${formatCurrency(value)} con PayPal.`
-        : "Pago simulado.";
-      result.style.display = "block";
     });
 
+    updateSummary();
     updateSaldo();
   </script>
 </body>

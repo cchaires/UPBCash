@@ -122,6 +122,8 @@
       border-radius: 12px;
       cursor:pointer;
       transition:.15s transform ease, .15s opacity ease;
+      text-decoration: none;
+      display: inline-block;
     }
     .btnSmall:active{ transform: scale(.98); }
     .btnSmall:hover{ opacity:.95; }
@@ -143,6 +145,9 @@
       background: linear-gradient(180deg, var(--gold), var(--gold2));
       box-shadow: 0 12px 26px rgba(0,0,0,.18);
       transition:.15s transform ease, .15s filter ease;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
     }
     .btnPrimary:hover{ filter: brightness(1.02); }
     .btnPrimary:active{ transform: scale(.985); }
@@ -210,15 +215,15 @@
 
       <div class="balanceRow">
         <div class="label">Saldo disponible</div>
-        <div class="amount">$100</div>
+        <div class="amount" id="appSaldo">$0.00</div>
       </div>
 
       <div class="recharge">
-        <button class="btnSmall">Recargar saldo</button>
+        <a class="btnSmall" href="{% url 'recarga' %}">Recargar saldo</a>
       </div>
 
       <div class="ctaWrap">
-        <button class="btnPrimary">Explorar menú</button>
+        <a class="btnPrimary" href="{% url 'menu_alimentos' %}">Explorar menú</a>
       </div>
 
       <div class="spacer"></div>
@@ -227,11 +232,17 @@
     </div>
 
     <nav class="bottomNav">
-      <a class="navItem active" href="#">Inicio</a>
-      <a class="navItem" href="#">Mapa</a>
-      <a class="navItem" href="#">Historial</a>
-      <a class="navItem" href="#">Cuenta</a>
+      <a class="navItem active" href="{% url 'cliente' %}">Inicio</a>
+      <a class="navItem" href="{% url 'cliente_mapa' %}">Mapa</a>
+      <a class="navItem" href="{% url 'historial_compras' %}">Historial</a>
+      <a class="navItem" href="{% url 'mi_cuenta' %}">Cuenta</a>
     </nav>
   </div>
+
+  <script src="{% static 'core/js/saldo_cliente.js' %}"></script>
+  <script>
+    setUpbcashSaldo({{ saldo_actual|floatformat:2 }});
+    updateUpbcashSaldoText("#appSaldo");
+  </script>
 </body>
 </html>

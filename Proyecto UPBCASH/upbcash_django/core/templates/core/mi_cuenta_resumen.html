@@ -49,7 +49,7 @@
           <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
             <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
             <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
-            <a href="{% url 'index' %}" role="menuitem">Cerrar sesión</a>
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesión</a>
           </div>
         </div>
       </aside>
@@ -115,7 +115,7 @@
             <div class="history">
               <div class="history__header">
                 <h3>Historial de compras</h3>
-                <a href="#" class="link-inline">Ver todo</a>
+                <a href="{% url 'historial_compras' %}" class="link-inline">Ver todo</a>
               </div>
               <ul class="history__list">
                 <li class="history__item">

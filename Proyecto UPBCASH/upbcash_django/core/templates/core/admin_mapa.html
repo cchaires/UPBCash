@@ -1,0 +1,67 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Mapa Administrador</title>
+  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
+</head>
+<body>
+  <div class="page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones del administrador">
+          <a class="nav__item" href="{% url 'admin_inicio' %}">
+            <span class="nav__icon">🏠</span><span>Inicio</span>
+          </a>
+          <a class="nav__item nav__item--active" href="{% url 'admin_mapa' %}">
+            <span class="nav__icon">🗺️</span><span>Mapa</span>
+          </a>
+          <a class="nav__item" href="{% url 'vendedor_ventas' %}">
+            <span class="nav__icon">📊</span><span>Ventas</span>
+          </a>
+          <a class="nav__item" href="{% url 'vendedor_productos' %}">
+            <span class="nav__icon">🍽️</span><span>Quioscos</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Administrador</div>
+          </div>
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
+            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            <a href="{% url 'admin_inicio' %}" role="menuitem">Administrador</a>
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main__inner main__inner--scroll">
+          <section class="card">
+            <h1 class="page-title">Mapa y ubicaciones</h1>
+            <p class="page-subtitle">Vista general de quioscos en el evento.</p>
+            <div class="map-card">
+              <img class="map-image" src="{% static 'core/img/mapa_upbc.png' %}" alt="Mapa del evento" />
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+</body>
+</html>

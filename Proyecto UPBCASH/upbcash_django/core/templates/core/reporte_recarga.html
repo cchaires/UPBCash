@@ -1,0 +1,134 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Reportar problema de recarga</title>
+  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
+</head>
+<body>
+  <div class="page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones del cliente">
+          <a class="nav__item" href="{% url 'cliente' %}">
+            <span class="nav__icon">🏠</span><span>Inicio</span>
+          </a>
+          <a class="nav__item" href="{% url 'cliente_mapa' %}">
+            <span class="nav__icon">📍</span><span>Mapa</span>
+          </a>
+          <a class="nav__item" href="{% url 'menu_alimentos' %}">
+            <span class="nav__icon">🍽️</span><span>Menu alimentos</span>
+          </a>
+          <a class="nav__item" href="{% url 'historial_compras' %}">
+            <span class="nav__icon">🕒</span><span>Historial compras</span>
+          </a>
+          <a class="nav__item nav__item--active" href="{% url 'historial_recargas' %}">
+            <span class="nav__icon">🧾</span><span>Historial recargas</span>
+          </a>
+          <a class="nav__item" href="{% url 'recarga' %}">
+            <span class="nav__icon">💳</span><span>Recarga</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Cliente</div>
+          </div>
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
+            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main__inner main__inner--scroll">
+          <header class="main__header">
+            <div>
+              <h1 class="page-title">Reportar problema de recarga</h1>
+              <p class="page-subtitle">Si tu recarga no se reflejo, llena este formulario.</p>
+            </div>
+            <a class="btn btn--ghost" href="{% url 'historial_recargas' %}">Volver</a>
+          </header>
+
+          {% if error_message %}
+          <p class="helper" style="color:#b00020; margin: 0 0 12px;">{{ error_message }}</p>
+          {% endif %}
+
+          <section class="card">
+            <div class="list-item" style="margin-bottom: 14px;">
+              <div>
+                <div class="list-item__title">Recarga seleccionada</div>
+                <div class="list-item__meta">ID: {{ recarga.code }} · {{ recarga.created_at|date:"d M" }} · {{ recarga.card_label }}</div>
+              </div>
+              <div class="list-item__price">+${{ recarga.amount|floatformat:2 }}</div>
+            </div>
+
+            <form class="form form--wide" method="post" action="{% url 'reporte_recarga' recarga.code %}" novalidate>
+              {% csrf_token %}
+              <div class="field">
+                <label for="recarga-id">ID de la recarga</label>
+                <input id="recarga-id" class="input" type="text" value="{{ recarga.code }}" readonly />
+              </div>
+
+              <div class="field">
+                <label for="recarga-correo">Correo del cliente</label>
+                <input id="recarga-correo" name="recarga_correo" class="input" type="email" placeholder="correo@ejemplo.com" value="{{ request.user.email }}" required />
+              </div>
+
+              <div class="field">
+                <label for="recarga-monto">Monto de la recarga</label>
+                <input id="recarga-monto" class="input" type="text" value="+${{ recarga.amount|floatformat:2 }}" readonly />
+              </div>
+
+              <div class="field">
+                <label for="recarga-fecha">Fecha de la recarga</label>
+                <input id="recarga-fecha" class="input" type="text" value="{{ recarga.created_at|date:'d M' }}" readonly />
+              </div>
+
+              <div class="field">
+                <label for="recarga-motivo">Motivo</label>
+                <select id="recarga-motivo" name="recarga_motivo" class="input">
+                  <option>La recarga no se reflejo</option>
+                  <option>Monto incorrecto</option>
+                  <option>Pago duplicado</option>
+                  <option>Otro</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="recarga-detalle">Descripcion del problema</label>
+                <textarea id="recarga-detalle" name="recarga_detalle" class="input" rows="4" placeholder="Describe lo ocurrido..." required></textarea>
+              </div>
+
+              <div class="field">
+                <label for="recarga-comprobante">Comprobante de compra (imagen)</label>
+                <input id="recarga-comprobante" class="input" type="file" accept="image/*" />
+              </div>
+
+              <div class="actions-row">
+                <a class="btn btn--secondary" href="{% url 'historial_recargas' %}">Cancelar</a>
+                <button class="btn btn--primary" type="submit">Enviar reporte</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+</body>
+</html>

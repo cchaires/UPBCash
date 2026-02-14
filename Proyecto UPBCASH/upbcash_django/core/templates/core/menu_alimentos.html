@@ -1,0 +1,105 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Menu de alimentos</title>
+  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
+</head>
+<body>
+  <div class="page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones del cliente">
+          <a class="nav__item" href="{% url 'cliente' %}">
+            <span class="nav__icon">🏠</span><span>Inicio</span>
+          </a>
+          <a class="nav__item" href="{% url 'cliente_mapa' %}">
+            <span class="nav__icon">📍</span><span>Mapa</span>
+          </a>
+          <a class="nav__item nav__item--active" href="{% url 'menu_alimentos' %}">
+            <span class="nav__icon">🍽️</span><span>Menu alimentos</span>
+          </a>
+          <a class="nav__item" href="{% url 'historial_compras' %}">
+            <span class="nav__icon">🕒</span><span>Historial compras</span>
+          </a>
+          <a class="nav__item" href="{% url 'recarga' %}">
+            <span class="nav__icon">💳</span><span>Recarga</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+          <div class="userbox__info">
+            <div class="userbox__name">{{ request.user.first_name|default:request.user.username }}</div>
+            <div class="userbox__sub">Cliente</div>
+          </div>
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
+            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main__inner main__inner--scroll">
+          <header class="main__header">
+            <div>
+              <h1 class="page-title">Menu de alimentos</h1>
+              <p class="page-subtitle">Elige lo que quieras comprar.</p>
+            </div>
+            <a class="btn btn--cart" href="{% url 'carrito_cliente' %}">
+              Carrito de compras
+              <span class="badge" id="cartCount">{{ cart_count }}</span>
+            </a>
+          </header>
+
+          <section class="card">
+            {% if messages %}
+              {% for message in messages %}
+                <p class="helper" style="margin: 0 0 12px; color:{% if message.tags == 'error' %}#b00020{% else %}#2f8f5b{% endif %};">{{ message }}</p>
+              {% endfor %}
+            {% endif %}
+
+            <div class="menu-grid">
+              {% for item in menu_items %}
+                <article class="menu-item">
+                  <div class="item__photo item__photo--{{ item.photo_variant }}">{{ item.name }}</div>
+                  <div class="item__name">{{ item.name }}</div>
+                  <div class="item__desc">{{ item.description }}</div>
+                  <div class="item__price">${{ item.price|floatformat:2 }} <span class="item__badge">Disponible</span></div>
+
+                  <form class="item__actions" method="post" action="{% url 'menu_alimentos' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="item_code" value="{{ item.code }}" />
+                    <button class="btn btn--primary btn--sm" type="submit" name="action" value="buy">Comprar</button>
+                    <button class="btn btn--secondary btn--sm" type="submit" name="action" value="add">Agregar al carrito</button>
+                  </form>
+                </article>
+              {% empty %}
+                <div class="list-item">
+                  <div>
+                    <div class="list-item__title">No hay productos disponibles</div>
+                    <div class="list-item__meta">Intenta de nuevo mas tarde.</div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+</body>
+</html>

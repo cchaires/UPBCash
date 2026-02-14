@@ -22,18 +22,25 @@
       </header>
 
       <div class="card__body">
-        <form class="form" action="{% url 'cliente' %}">
+        <form class="form" method="post" action="{% url 'index' %}">
+          {% csrf_token %}
+          {% if error_message %}
+          <p class="error error--visible">{{ error_message }}</p>
+          {% endif %}
 
           <input
             class="input"
             type="text"
+            name="identifier"
             placeholder="Matrícula / Correo"
+            value="{{ request.POST.identifier|default:'' }}"
             required
           />
 
           <input
             class="input"
             type="password"
+            name="password"
             placeholder="Contraseña"
             required
           />
@@ -46,12 +53,12 @@
 
           <p class="helper">
             ¿No tienes cuenta?
-            <a href="#" class="link">Registrarse</a>
+            <a href="{% url 'registro' %}" class="link">Registrarse</a>
           </p>
 
           <hr class="divider">
 
-          <a href="#" class="guest">
+          <a href="{% url 'registro_invitado' %}" class="guest">
             Entrar como invitado
           </a>
 

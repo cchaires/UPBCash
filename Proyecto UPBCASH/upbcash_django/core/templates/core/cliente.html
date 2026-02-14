@@ -18,14 +18,24 @@
         </div>
 
         <nav class="nav">
-          <a class="nav__item nav__item--active" href="#">
+          <a class="nav__item nav__item--active" href="{% url 'cliente' %}">
+            <span class="nav__icon">🏠</span>
+            <span>Inicio</span>
+          </a>
+
+          <a class="nav__item" href="{% url 'cliente_mapa' %}">
             <span class="nav__icon">📍</span>
             <span>Mapa</span>
           </a>
 
-          <a class="nav__item" href="#">
+          <a class="nav__item" href="{% url 'menu_alimentos' %}">
+            <span class="nav__icon">🍽️</span>
+            <span>Menu alimentos</span>
+          </a>
+
+          <a class="nav__item" href="{% url 'historial_compras' %}">
             <span class="nav__icon">🕒</span>
-            <span>Historial</span>
+            <span>Historial compras</span>
           </a>
 
           <a class="nav__item" href="{% url 'recarga' %}">
@@ -51,7 +61,7 @@
           <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
             <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
             <a href="{% url 'vendedor' %}" role="menuitem">Cambiar rol</a>
-            <a href="{% url 'index' %}" role="menuitem">Cerrar sesión</a>
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesión</a>
           </div>
         </div>
       </aside>
@@ -79,9 +89,9 @@
               </div>
             </div>
 
-            <button class="btn btn--primary" type="button">
+            <a class="btn btn--primary" href="{% url 'menu_alimentos' %}">
               Explorar Menú
-            </button>
+            </a>
           </section>
         </div>
       </main>
@@ -89,18 +99,15 @@
     </div>
   </div>
 
+  <script src="{% static 'core/js/saldo_cliente.js' %}"></script>
   <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
   <script>
+    setUpbcashSaldo({{ saldo_actual|floatformat:2 }});
+    const saldo = getUpbcashSaldo();
     const saldoEl = document.getElementById("saldoValue");
     const balanceAmountEl = document.getElementById("balanceAmount");
-    const saldoStored = localStorage.getItem("upbcash_saldo");
-    const saldoValue = Number(saldoStored ?? 0);
-    if (saldoEl) {
-      saldoEl.textContent = `$${saldoValue.toFixed(2)}`;
-    }
-    if (balanceAmountEl) {
-      balanceAmountEl.textContent = `$${saldoValue.toFixed(2)}`;
-    }
+    if (saldoEl) saldoEl.textContent = formatUpbcashCurrency(saldo);
+    if (balanceAmountEl) balanceAmountEl.textContent = formatUpbcashCurrency(saldo);
   </script>
 </body>
 </html>

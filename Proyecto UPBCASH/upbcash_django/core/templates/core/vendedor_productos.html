@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Vendedor</title>
+  <title>UPBCash - Productos</title>
   <link rel="stylesheet" href="{% static 'core/css/styles_vendedor_layout.css' %}" />
 </head>
 <body>
@@ -16,10 +16,10 @@
         </div>
 
         <nav class="nav" aria-label="Secciones del vendedor">
-          <a class="nav__item nav__item--active" href="{% url 'vendedor' %}">
+          <a class="nav__item" href="{% url 'vendedor' %}">
             <span class="nav__icon">🏠</span><span>Inicio</span>
           </a>
-          <a class="nav__item" href="{% url 'vendedor_productos' %}">
+          <a class="nav__item nav__item--active" href="{% url 'vendedor_productos' %}">
             <span class="nav__icon">🍽️</span><span>Productos</span>
           </a>
           <a class="nav__item" href="{% url 'vendedor_ventas' %}">
@@ -51,56 +51,37 @@
         <div class="main__inner">
           <header class="main__header">
             <div class="title-block">
-              <h1>Panel del vendedor</h1>
-              <p>Resumen de hoy y control de productos.</p>
+              <h1>Menu disponible</h1>
+              <p>Actualiza disponibilidad de productos.</p>
             </div>
-            <div class="status-pill">Rol activo: Vendedor</div>
+            <div class="status-pill">Hoy 3:00 pm - 9:00 pm</div>
           </header>
 
           <section class="panel">
-            <div class="panel__title">
-              <h2>Resumen de hoy</h2>
-              <span class="status-pill">Hoy 3:00 pm - 9:00 pm</span>
-            </div>
             <div class="menu-grid">
               <article class="menu-item">
-                <div class="item__name">Ventas del dia</div>
-                <div class="item__desc">Total acumulado</div>
-                <div class="item__price"><span>$1,500</span></div>
-              </article>
-              <article class="menu-item">
-                <div class="item__name">Pedidos pendientes</div>
-                <div class="item__desc">Por atender</div>
-                <div class="item__price"><span>5</span></div>
-              </article>
-              <article class="menu-item">
-                <div class="item__name">Stock bajo</div>
-                <div class="item__desc">Productos por revisar</div>
-                <div class="item__price"><span>3</span></div>
-              </article>
-            </div>
-          </section>
-
-          <section class="panel" style="margin-top: 16px;">
-            <div class="panel__title">
-              <h2>Ultimas ventas</h2>
-              <a href="{% url 'vendedor_ventas' %}">Ver todas</a>
-            </div>
-            <div class="menu-grid">
-              <article class="menu-item">
-                <div class="item__name">Combo campus</div>
-                <div class="item__desc">27 Ene · Ticket #104</div>
-                <div class="item__price"><span>$95</span></div>
-              </article>
-              <article class="menu-item">
+                <div class="item__photo item__photo--taco">Tacos</div>
                 <div class="item__name">Tacos al pastor</div>
-                <div class="item__desc">27 Ene · Ticket #103</div>
-                <div class="item__price"><span>$45</span></div>
+                <div class="item__desc">Precio: $45 · Stock: 24</div>
+                <div class="item__price"><span>Disponible</span><span class="item__badge">OK</span></div>
               </article>
               <article class="menu-item">
+                <div class="item__photo item__photo--cafe">Cafe</div>
                 <div class="item__name">Cafe de olla</div>
-                <div class="item__desc">27 Ene · Ticket #102</div>
-                <div class="item__price"><span>$28</span></div>
+                <div class="item__desc">Precio: $28 · Stock: 18</div>
+                <div class="item__price"><span>Disponible</span><span class="item__badge">OK</span></div>
+              </article>
+              <article class="menu-item">
+                <div class="item__photo item__photo--agua">Agua</div>
+                <div class="item__name">Agua de jamaica</div>
+                <div class="item__desc">Precio: $22 · Stock: 8</div>
+                <div class="item__price"><span>Por terminar</span><span class="item__badge">Bajo</span></div>
+              </article>
+              <article class="menu-item">
+                <div class="item__photo item__photo--postre">Postre</div>
+                <div class="item__name">Cheesecake fresa</div>
+                <div class="item__desc">Precio: $38 · Stock: 12</div>
+                <div class="item__price"><span>Disponible</span><span class="item__badge">OK</span></div>
               </article>
             </div>
           </section>
