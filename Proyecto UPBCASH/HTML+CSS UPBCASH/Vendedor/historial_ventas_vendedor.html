@@ -1,0 +1,94 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Historial de ventas</title>
+  <link rel="stylesheet" href="Vendedor_Layout/styles_vendedor_layout.css" />
+</head>
+
+<body>
+  <div class="page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="../Cliente/Cliente_Layout/imgupbcash-logo-c.png" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones del vendedor">
+          <a class="nav__item" href="Vendedor_Layout/vendedor_layout.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></span><span>Inicio</span>
+          </a>
+          <a class="nav__item" href="Vendedor_Layout/menu_vendedor.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/></svg></span><span>Productos</span>
+          </a>
+          <a class="nav__item nav__item--active" href="historial_ventas_vendedor.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v-4"/><path d="M12 15V7"/><path d="M17 15v-9"/></svg></span><span>Ventas</span>
+          </a>
+          <a class="nav__item" href="Vendedor_Layout/mapa_vendedor.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h6v12H3z"/><path d="M9 6l6-2v12l-6 2"/><path d="M15 4h6v12h-6z"/></svg></span><span>Mapa</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">&#128100;</div>
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Vendedor</div>
+          </div>
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="../Cliente/Cliente_Layout/cliente_layout.html" role="menuitem">Cliente</a>
+            <a href="Vendedor_Layout/vendedor_layout.html" role="menuitem">Vendedor</a>
+            <a href="../Administrador/Layout_admin_inicio/admin_inicio.html" role="menuitem">Administrador</a>
+            <a href="../index/index.html" role="menuitem">Cerrar sesion</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main__inner">
+          <header class="main__header">
+            <div class="title-block">
+              <h1>Historial de ventas</h1>
+              <p>Ultimas ventas registradas.</p>
+            </div>
+            <div class="status-pill status-pill--contrast">Rol activo: Vendedor</div>
+          </header>
+
+          <section class="panel">
+            <div class="menu-grid">
+              <article class="menu-item">
+                <div class="item__name">Combo campus</div>
+                <div class="item__desc">27 Ene · 2 combos · Ticket #104</div>
+                <div class="item__price"><span>$190</span></div>
+              </article>
+              <article class="menu-item">
+                <div class="item__name">Tacos al pastor</div>
+                <div class="item__desc">27 Ene · 3 ordenes · Ticket #103</div>
+                <div class="item__price"><span>$135</span></div>
+              </article>
+              <article class="menu-item">
+                <div class="item__name">Cafe de olla</div>
+                <div class="item__desc">27 Ene · 4 vasos · Ticket #102</div>
+                <div class="item__price"><span>$112</span></div>
+              </article>
+              <article class="menu-item">
+                <div class="item__name">Agua de jamaica</div>
+                <div class="item__desc">26 Ene · 5 vasos · Ticket #101</div>
+                <div class="item__price"><span>$110</span></div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../Cliente/Cliente_Layout/dropdown_cliente.js"></script>
+</body>
+</html>

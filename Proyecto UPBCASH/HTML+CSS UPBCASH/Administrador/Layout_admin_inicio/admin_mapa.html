@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Mapa Administrador</title>
+  <link rel="stylesheet" href="../../Cliente/Cliente_Layout/styles_cliente_layout.css" />
+</head>
+
+<body>
+  <div class="page">
+    <div class="app-shell admin-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="../../Cliente/Cliente_Layout/imgupbcash-logo-c.png" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones del administrador">
+          <a class="nav__item" href="admin_inicio.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M3 14h7v7H3z"/><path d="M14 14h7v7h-7z"/></svg></span>
+            <span>Dashboard</span>
+          </a>
+          <a class="nav__item nav__item--active" href="admin_mapa.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-4.6 7-11a7 7 0 0 0-14 0c0 6.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+            <span>Mapa</span>
+          </a>
+          <a class="nav__item" href="../../MiCuenta/MiCuenta_Layout/mi_cuenta.html">
+            <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span>
+            <span>Mi cuenta</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">&#128100;</div>
+          <div class="userbox__info">
+            <div class="userbox__name">Fernando</div>
+            <div class="userbox__sub">Administrador</div>
+          </div>
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="../../MiCuenta/MiCuenta_Layout/mi_cuenta.html" role="menuitem">Mi cuenta</a>
+            <a href="../../Cliente/Cliente_Layout/cliente_layout.html" role="menuitem">Cliente</a>
+            <a href="../../Vendedor/Vendedor_Layout/vendedor_layout.html" role="menuitem">Vendedor</a>
+            <a href="admin_inicio.html" role="menuitem">Administrador</a>
+            <a href="../../index/index.html" role="menuitem">Cerrar sesion</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main admin-main">
+        <div class="main__inner main__inner--scroll">
+          <header class="admin-topbar">
+            <div class="admin-title">
+              <h1>Mapa y ubicaciones</h1>
+            </div>
+            <div class="admin-role">Rol activo: Administrador</div>
+          </header>
+
+          <section class="card admin-card admin-map">
+            <div class="admin-map__header">
+              <h2>Mapa del evento</h2>
+              <span class="admin-pill">Ubicaciones asignadas</span>
+            </div>
+            <div class="admin-map__image">
+              <img src="../../index/Data/mapa_upbc.png" alt="Mapa UPBC" />
+            </div>
+
+            <div class="admin-map__table">
+              <h3>Asignacion de quioscos</h3>
+              <div class="admin-table">
+                <div class="admin-table__head">
+                  <span>Ubicacion</span>
+                  <span>Quiosco</span>
+                  <span>Responsable</span>
+                  <span>Accion</span>
+                </div>
+                <div class="admin-table__row">
+                  <span>D-1</span>
+                  <span>Comida Mexicana</span>
+                  <span>Fernando</span>
+                  <div class="admin-table__cell">
+                    <select>
+                      <option selected>Fernando</option>
+                      <option>Mariana</option>
+                      <option>Jorge</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="admin-table__row">
+                  <span>D-2</span>
+                  <span>Cafe Central</span>
+                  <span>Mariana</span>
+                  <div class="admin-table__cell">
+                    <select>
+                      <option>Fernando</option>
+                      <option selected>Mariana</option>
+                      <option>Jorge</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="admin-table__row">
+                  <span>D-3</span>
+                  <span>Bebidas Frescas</span>
+                  <span>Jorge</span>
+                  <div class="admin-table__cell">
+                    <select>
+                      <option>Fernando</option>
+                      <option>Mariana</option>
+                      <option selected>Jorge</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="admin-table__row">
+                  <span>D-4</span>
+                  <span>Postres UPB</span>
+                  <span>Sin asignar</span>
+                  <div class="admin-table__cell">
+                    <select>
+                      <option selected>Sin asignar</option>
+                      <option>Fernando</option>
+                      <option>Mariana</option>
+                      <option>Jorge</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../../Cliente/Cliente_Layout/dropdown_cliente.js"></script>
+</body>
+</html>

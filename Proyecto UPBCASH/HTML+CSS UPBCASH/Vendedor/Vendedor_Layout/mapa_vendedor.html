@@ -3,22 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Vendedor</title>
+  <title>UPBCash - Mapa Vendedor</title>
   <link rel="stylesheet" href="styles_vendedor_layout.css" />
 </head>
 
 <body>
   <div class="page">
     <div class="app-shell">
-
-      <!-- SIDEBAR -->
       <aside class="sidebar">
         <div class="brand">
           <img class="brand__logo" src="../../Cliente/Cliente_Layout/imgupbcash-logo-c.png" alt="UPBCash" />
         </div>
 
         <nav class="nav" aria-label="Secciones del vendedor">
-          <a class="nav__item nav__item--active" href="vendedor_layout.html">
+          <a class="nav__item" href="vendedor_layout.html">
             <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></span><span>Inicio</span>
           </a>
           <a class="nav__item" href="menu_vendedor.html">
@@ -27,7 +25,7 @@
           <a class="nav__item" href="../historial_ventas_vendedor.html">
             <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15v-4"/><path d="M12 15V7"/><path d="M17 15v-9"/></svg></span><span>Ventas</span>
           </a>
-          <a class="nav__item" href="mapa_vendedor.html">
+          <a class="nav__item nav__item--active" href="mapa_vendedor.html">
             <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h6v12H3z"/><path d="M9 6l6-2v12l-6 2"/><path d="M15 4h6v12h-6z"/></svg></span><span>Mapa</span>
           </a>
         </nav>
@@ -52,78 +50,20 @@
         </div>
       </aside>
 
-      <!-- MAIN -->
       <main class="main">
         <div class="main__inner main__inner--scroll">
-          <header class="main__header">
-            <div class="title-block">
-              <h1>Panel del vendedor</h1>
-              <p>Resumen de hoy y control de productos.</p>
-            </div>
-            <div class="status-pill status-pill--contrast">Rol activo: Vendedor</div>
-          </header>
-
           <section class="panel">
             <div class="panel__title">
-              <h2>Resumen de hoy</h2>
-              <span class="status-pill">Hoy 3:00 pm - 9:00 pm</span>
+              <h2>Mapa UPBC</h2>
+              <span class="status-pill status-pill--contrast">Ubicacion del evento</span>
             </div>
-
-            <div class="summary-grid">
-              <article class="summary-card">
-                <div class="summary-value">$1,500</div>
-                <div class="summary-label">Ventas del dia</div>
-                <a class="btn btn--ghost" href="../historial_ventas_vendedor.html">Ver ventas</a>
-              </article>
-
-              <article class="summary-card">
-                <div class="summary-value">5</div>
-                <div class="summary-label">Pedidos pendientes</div>
-                <button class="btn btn--ghost" type="button">Ver pedidos</button>
-              </article>
-
-              <article class="summary-card">
-                <div class="summary-value">3</div>
-                <div class="summary-label">Stock bajo</div>
-                <a class="btn btn--ghost" href="menu_vendedor.html">Ver productos</a>
-              </article>
+            <div class="map-card">
+              <img class="map-image" src="../../index/Data/mapa_upbc.png" alt="Mapa UPBC" />
             </div>
-
-            <div class="sales-panel">
-              <div class="sales-header">
-                <h3>Ultimas ventas</h3>
-                <a class="link link--small" href="../historial_ventas_vendedor.html">Ver todas</a>
-              </div>
-              <div class="sales-list">
-                <div class="sales-item">
-                  <div>
-                    <div class="sales-title">Combo campus</div>
-                    <div class="sales-meta">27 Ene · Ticket #104</div>
-                  </div>
-                  <div class="sales-amount">$95</div>
-                </div>
-                <div class="sales-item">
-                  <div>
-                    <div class="sales-title">Tacos al pastor</div>
-                    <div class="sales-meta">27 Ene · Ticket #103</div>
-                  </div>
-                  <div class="sales-amount">$45</div>
-                </div>
-                <div class="sales-item">
-                  <div>
-                    <div class="sales-title">Cafe de olla</div>
-                    <div class="sales-meta">27 Ene · Ticket #102</div>
-                  </div>
-                  <div class="sales-amount">$28</div>
-                </div>
-                <div class="sales-item">
-                  <div>
-                    <div class="sales-title">Agua de jamaica</div>
-                    <div class="sales-meta">26 Ene · Ticket #101</div>
-                  </div>
-                  <div class="sales-amount">$22</div>
-                </div>
-              </div>
+            <div class="assign-card">
+              <h3>Ubicacion asignada</h3>
+              <p>Este es el espacio asignado para tu quiosco.</p>
+              <div class="badge-slot">Local D-1</div>
             </div>
           </section>
         </div>

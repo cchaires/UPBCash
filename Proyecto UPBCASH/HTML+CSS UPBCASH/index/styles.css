@@ -135,3 +135,60 @@ body {
   font-weight: 700;
   text-decoration: none;
 }
+
+/* ===== REGISTRO ===== */
+.segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: rgba(91, 19, 126, 0.08);
+  padding: 6px;
+  border-radius: 16px;
+}
+
+.segmented__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented__label {
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  color: var(--morado);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.segmented__input:checked + .segmented__label {
+  background: linear-gradient(180deg, var(--dorado), var(--dorado-oscuro));
+  color: var(--blanco);
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field-group--hidden {
+  display: none;
+}
+
+.error {
+  margin: -8px 0 4px;
+  font-size: 13px;
+  color: #b00020;
+  display: none;
+}
+
+.error--visible {
+  display: block;
+}
+
+.input--error {
+  border-color: #b00020;
+}
