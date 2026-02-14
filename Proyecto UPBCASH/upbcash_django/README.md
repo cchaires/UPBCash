@@ -42,6 +42,26 @@ Aplicacion web de UPBCash migrada desde prototipos HTML+CSS a Django con persist
 - `Purchase` (N:1 con `User`)
 - `PurchaseItem` (N:1 con `Purchase`, snapshot de item comprado)
 
+## Diagrama ER (Mermaid)
+
+```mermaid
+erDiagram
+    AUTH_USER ||--|| USER_PROFILE : has
+    AUTH_USER ||--|| WALLET : owns
+    WALLET ||--o{ WALLET_LEDGER : records
+    AUTH_USER ||--o{ WALLET_LEDGER : performs
+
+    AUTH_USER ||--o{ RECHARGE : makes
+    RECHARGE ||--o{ RECHARGE_ISSUE : reports
+    AUTH_USER ||--o{ RECHARGE_ISSUE : submits
+
+    FOOD_ITEM ||--o{ CART_ITEM : appears_in
+    AUTH_USER ||--o{ CART_ITEM : keeps
+
+    AUTH_USER ||--o{ PURCHASE : places
+    PURCHASE ||--o{ PURCHASE_ITEM : contains
+```
+
 ## Configuracion de entorno
 
 Crear archivo `.env` basado en `.env.example`.
