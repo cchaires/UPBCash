@@ -1,15 +1,21 @@
 # UPBCash Django
 
-Aplicacion web de UPBCash migrada desde prototipos HTML+CSS a Django con persistencia real de usuarios, saldo, recargas, carrito y compras.
+Aplicacion web de UPBCash para gestion de UCoins por eventos/campanas con roles cliente/vendedor/staff, catalogo por puesto, ordenes con QR y contabilidad en doble partida.
 
 ## Estado del proyecto
 
-- Migracion funcional de pantallas principales de cliente, vendedor y administrador.
-- Autenticacion real (`login`, `registro`, `registro invitado`, `logout`).
-- Persistencia de recargas e historial de recargas con reporte de incidencias.
-- Persistencia de carrito, pago de compras e historial de compras.
-- Trazabilidad de movimientos de saldo por ledger (`WalletLedger`).
-- Configuracion de base de datos para SQLite (default) y PostgreSQL por variables de entorno.
+- Esquema multi-evento implementado en PostgreSQL/SQLite con nuevas apps de dominio:
+  - `events`: campanas, membresias y grupos por evento.
+  - `stalls`: mapa, puestos, catalogo e inventario.
+  - `commerce`: carrito v2, ordenes, QR y entrega.
+  - `accounting`: ledger de doble partida, recargas y saldo cache.
+  - `operations`: soporte y auditoria staff.
+- API base para operaciones clave:
+  - checkout: `POST /api/events/{event_id}/cart/checkout`
+  - validacion QR: `POST /api/orders/{order_id}/qr/verify`
+  - staff: `assign-vendor`, `assign-spot`, `grant-ucoins`
+- Dual-write habilitado desde flujos legacy de `core` (`recarga` y `checkout`) hacia el nuevo esquema.
+- Cierre de evento soportado por comando de gestion con expiracion de saldo remanente.
 
 ## Stack
 
@@ -20,8 +26,12 @@ Aplicacion web de UPBCash migrada desde prototipos HTML+CSS a Django con persist
 
 ## Estructura principal
 
-- `core/models.py`: modelos de negocio.
-- `core/views.py`: logica de autenticacion, wallet, recargas, carrito y compras.
+- `core/`: modulo legacy (pantallas actuales) con sincronizacion a esquema nuevo.
+- `events/models.py`: eventos, membresias y roles por contexto.
+- `stalls/models.py`: mapa, puestos, asignaciones, catalogo e inventario.
+- `commerce/models.py`: carrito/ordenes/QR/entrega.
+- `accounting/models.py`: cuentas, transacciones, asientos, recargas y saldos.
+- `operations/models.py`: tickets de soporte y auditoria staff.
 - `core/templates/core/`: templates migrados.
 - `static/core/`: css/js/img compartidos.
 - `upbcash/settings.py`: configuracion por entorno.
@@ -29,38 +39,27 @@ Aplicacion web de UPBCash migrada desde prototipos HTML+CSS a Django con persist
 - `.env.example`: variables de entorno de referencia.
 - `MIGRACION_GAPS.md`: checklist de migracion (actualizado a completado en bloques trabajados).
 
-## Modelo de datos (resumen)
+## Modelo de datos (resumen v2)
 
-- `User` (Django auth)
-- `UserProfile` (1:1 con `User`)
-- `Wallet` (1:1 con `User`, saldo actual)
-- `WalletLedger` (N:1 con `Wallet` y `User`)
-- `Recharge` (N:1 con `User`)
-- `RechargeIssue` (N:1 con `Recharge` y `User`)
-- `FoodItem` (catalogo)
-- `CartItem` (N:1 con `User` y `FoodItem`)
-- `Purchase` (N:1 con `User`)
-- `PurchaseItem` (N:1 con `Purchase`, snapshot de item comprado)
+- `events_eventcampaign`, `events_eventmembership`, `events_eventusergroup`
+- `stalls_mapzone`, `stalls_mapspot`, `stalls_stall`, `stalls_stallassignment`
+- `stalls_catalogproduct`, `stalls_stallproduct`, `stalls_stockmovement`
+- `commerce_cartitem`, `commerce_salesorder`, `commerce_salesorderitem`
+- `commerce_orderqrtoken`, `commerce_orderdeliverylog`
+- `accounting_ledgeraccount`, `accounting_ledgertransaction`, `accounting_ledgerentry`
+- `accounting_walletbalancecache`, `accounting_topuprecord`, `accounting_staffcreditgrant`
+- `operations_supportticket`, `operations_staffauditlog`
 
-## Diagrama ER (Mermaid)
+## Reglas clave implementadas
 
-```mermaid
-erDiagram
-    AUTH_USER ||--|| USER_PROFILE : has
-    AUTH_USER ||--|| WALLET : owns
-    WALLET ||--o{ WALLET_LEDGER : records
-    AUTH_USER ||--o{ WALLET_LEDGER : performs
-
-    AUTH_USER ||--o{ RECHARGE : makes
-    RECHARGE ||--o{ RECHARGE_ISSUE : reports
-    AUTH_USER ||--o{ RECHARGE_ISSUE : submits
-
-    FOOD_ITEM ||--o{ CART_ITEM : appears_in
-    AUTH_USER ||--o{ CART_ITEM : keeps
-
-    AUTH_USER ||--o{ PURCHASE : places
-    PURCHASE ||--o{ PURCHASE_ITEM : contains
-```
+- Multi-evento obligatorio.
+- Usuario nuevo entra a grupo `cliente` del evento activo.
+- Inventario por producto con modo `finite` o `unlimited`.
+- Umbral configurable de bajo inventario (`low_stock_threshold`).
+- QR por orden con token hash rotativo/revocable.
+- UCoin con paridad fija `1 UCoin = 1 MXN`.
+- Transacciones contables balanceadas (trigger en PostgreSQL + validacion en servicio).
+- Evento cerrado queda en modo solo lectura y puede expirar saldos con `close_event`.
 
 ## Configuracion de entorno
 
@@ -97,11 +96,15 @@ docker compose up -d db
 ./venv/bin/python manage.py runserver
 ```
 
-## Notas de integridad
+## Backfill y cierre de evento
 
-- Las operaciones de recarga y pago usan transacciones (`transaction.atomic`).
-- Para evitar condiciones de carrera en saldo, se bloquea la wallet con `select_for_update` durante recarga/pago.
-- Cada movimiento monetario exitoso crea registro en `WalletLedger`.
+```bash
+# Migrar datos legacy de core al esquema v2
+DB_ENGINE=sqlite ./venv/bin/python manage.py backfill_v2 --event-code legacy-boot --event-name "Evento Legacy"
+
+# Cerrar evento y expirar saldos
+DB_ENGINE=sqlite ./venv/bin/python manage.py close_event legacy-boot
+```
 
 ## Comandos utiles
 
@@ -109,5 +112,6 @@ docker compose up -d db
 ./venv/bin/python manage.py check
 ./venv/bin/python manage.py makemigrations
 ./venv/bin/python manage.py migrate
+./venv/bin/python manage.py test
 ./venv/bin/python manage.py createsuperuser
 ```

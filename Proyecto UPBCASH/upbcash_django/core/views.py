@@ -1,5 +1,6 @@
 import re
 from decimal import Decimal, InvalidOperation
+import logging
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -9,6 +10,11 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+
+from accounting.services import WalletService
+from commerce.services import CheckoutService
+from events.models import ProfileType
+from events.services import ensure_user_client_membership, get_active_event
 
 from .models import (
     CartItem,
@@ -21,6 +27,8 @@ from .models import (
     Wallet,
     WalletLedger,
 )
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_FOOD_ITEMS = [
     {
@@ -110,6 +118,59 @@ def _create_profile_and_wallet(
         invited_by_matricula=invited_by_matricula,
     )
     _wallet_for(user)
+    profile_type = ProfileType.COMUNIDAD if account_type == "comunidad" else ProfileType.INVITADO
+    ensure_user_client_membership(
+        user=user,
+        profile_type=profile_type,
+        matricula=matricula,
+        phone=phone,
+        invited_by_email=invited_by_email,
+        invited_by_matricula=invited_by_matricula,
+    )
+
+
+def _sync_legacy_wallet_balance_to_v2(*, user, legacy_balance):
+    event = get_active_event()
+    if not event:
+        return
+    WalletService.set_balance(event=event, user=user, balance=legacy_balance)
+
+
+def _sync_legacy_recharge_to_v2(*, user, recharge, amount):
+    event = get_active_event()
+    if not event:
+        return
+    WalletService.record_online_topup(
+        event=event,
+        user=user,
+        amount_ucoin=amount,
+        provider=recharge.payment_method or "PayPal",
+        provider_ref=recharge.code,
+        source_reference=f"legacy_recharge:{recharge.id}",
+    )
+
+
+def _sync_legacy_purchase_to_v2(*, user, purchase, cart_rows, legacy_balance_after):
+    event = get_active_event()
+    if not event:
+        return
+    CheckoutService.mirror_legacy_purchase(
+        event=event,
+        user=user,
+        legacy_purchase_id=purchase.id,
+        amount_ucoin=purchase.total,
+        legacy_cart_rows=cart_rows,
+    )
+    balance_before = Decimal(legacy_balance_after) + Decimal(purchase.total)
+    WalletService.set_balance(event=event, user=user, balance=balance_before)
+    WalletService.record_purchase_mirror(
+        event=event,
+        user=user,
+        amount_ucoin=purchase.total,
+        reference_model="legacy_purchase",
+        reference_id=purchase.id,
+        created_by_user=user,
+    )
 
 
 def _append_wallet_ledger(
@@ -193,6 +254,7 @@ def index(request):
         if user:
             login(request, user)
             _wallet_for(user)
+            ensure_user_client_membership(user=user)
             return redirect("cliente")
         error_message = "Credenciales invalidas."
 
@@ -400,6 +462,7 @@ def carrito_cliente(request):
         if action == "pay":
             cart_items = list(_cart_queryset(request.user))
             total = _cart_total(cart_items)
+            cart_rows_for_sync = _cart_rows(cart_items)
 
             if not cart_items:
                 messages.error(request, "No hay productos en el carrito.")
@@ -442,6 +505,17 @@ def carrito_cliente(request):
                 )
 
                 CartItem.objects.filter(user=request.user).delete()
+
+            try:
+                _sync_legacy_purchase_to_v2(
+                    user=request.user,
+                    purchase=purchase,
+                    cart_rows=cart_rows_for_sync,
+                    legacy_balance_after=locked_wallet.balance,
+                )
+                _sync_legacy_wallet_balance_to_v2(user=request.user, legacy_balance=locked_wallet.balance)
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("No se pudo sincronizar compra legacy hacia esquema v2: %s", exc)
 
             messages.success(request, f"Compra realizada por ${total:.2f}.")
             return redirect("historial_compras")
@@ -569,6 +643,15 @@ def recarga(request):
                     reference_id=recharge.code,
                     description="Recarga de saldo",
                 )
+            try:
+                _sync_legacy_recharge_to_v2(
+                    user=request.user,
+                    recharge=recharge,
+                    amount=amount,
+                )
+                _sync_legacy_wallet_balance_to_v2(user=request.user, legacy_balance=locked_wallet.balance)
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("No se pudo sincronizar recarga legacy hacia esquema v2: %s", exc)
             messages.success(request, f"Recarga aplicada correctamente ({recharge.code}).")
             return redirect("recarga")
 
