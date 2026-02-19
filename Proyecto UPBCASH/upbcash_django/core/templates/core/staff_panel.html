@@ -1,0 +1,298 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Panel Staff</title>
+  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/styles_staff_layout.css' %}" />
+</head>
+<body>
+  <div class="page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones de staff">
+          <a class="nav__item nav__item--active" href="{% url 'staff_panel' %}">
+            <span class="nav__icon">🛠️</span><span>Staff</span>
+          </a>
+          <a class="nav__item" href="{% url 'cliente' %}">
+            <span class="nav__icon">🏠</span><span>Cliente</span>
+          </a>
+          {% if can_view_vendor %}
+          <a class="nav__item" href="{% url 'vendedor' %}">
+            <span class="nav__icon">🍽️</span><span>Vendedor</span>
+          </a>
+          {% endif %}
+          {% if can_view_admin %}
+          <a class="nav__item" href="{% url 'admin_inicio' %}">
+            <span class="nav__icon">📊</span><span>Administrador</span>
+          </a>
+          {% endif %}
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+          <div class="userbox__info">
+            <div class="userbox__name">{{ user_display_name }}</div>
+            <div class="userbox__sub">Staff</div>
+          </div>
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
+            {% if can_view_vendor %}
+            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            {% endif %}
+            {% if can_view_staff %}
+            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
+            {% endif %}
+            {% if can_view_admin %}
+            <a href="{% url 'admin_inicio' %}" role="menuitem">Administrador</a>
+            {% endif %}
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main__inner main__inner--scroll">
+          <header class="main__header">
+            <div>
+              <h1 class="page-title">Panel staff</h1>
+              <p class="page-subtitle">Permisos, asignaciones y auditoria del evento activo.</p>
+            </div>
+            <div class="status-pill">Evento: {{ event.code }}</div>
+          </header>
+
+          <section class="card staff-grid-summary">
+            <article class="menu-item">
+              <div class="item__name">Usuarios en evento</div>
+              <div class="item__price"><span>{{ total_users }}</span></div>
+            </article>
+            <article class="menu-item">
+              <div class="item__name">Usuarios staff</div>
+              <div class="item__price"><span>{{ total_staff }}</span></div>
+            </article>
+            <article class="menu-item">
+              <div class="item__name">Usuarios vendedor</div>
+              <div class="item__price"><span>{{ total_vendors }}</span></div>
+            </article>
+            <article class="menu-item">
+              <div class="item__name">Asignaciones activas</div>
+              <div class="item__price"><span>{{ total_assignments }}</span></div>
+            </article>
+          </section>
+
+          {% if messages %}
+          <section class="card" style="margin-top: 14px;">
+            {% for message in messages %}
+            <p class="helper" style="margin: 0 0 10px; color:{% if message.tags == 'error' %}#b00020{% elif message.tags == 'warning' %}#7a5200{% else %}#2f8f5b{% endif %};">{{ message }}</p>
+            {% endfor %}
+          </section>
+          {% endif %}
+
+          <section class="card" style="margin-top: 14px;">
+            <form class="form filter-row staff-search" method="get" action="{% url 'staff_panel' %}">
+              <div class="field">
+                <label for="search">Buscar usuario</label>
+                <input class="input" id="search" name="q" value="{{ search_query }}" placeholder="username, email o matricula" />
+              </div>
+              <div class="actions-row">
+                <button class="btn btn--secondary" type="submit">Buscar</button>
+                <a class="btn btn--secondary" href="{% url 'staff_panel' %}">Limpiar</a>
+              </div>
+            </form>
+          </section>
+
+          <section class="card" style="margin-top: 14px;">
+            <h2 class="page-title staff-section-title">Permisos por usuario</h2>
+            <div class="table-wrap">
+              <table class="staff-table">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Roles</th>
+                    <th>Asignacion</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in user_rows %}
+                  <tr>
+                    <td>
+                      <div class="item__name">{{ row.membership.user.username }}</div>
+                      <div class="item__desc">{{ row.membership.user.email|default:"Sin email" }}</div>
+                      <div class="item__desc">Matricula: {{ row.membership.matricula|default:"-" }}</div>
+                    </td>
+                    <td>
+                      {% if row.is_staff %}
+                      <span class="staff-role staff-role--staff">staff</span>
+                      {% endif %}
+                      {% if row.is_vendor %}
+                      <span class="staff-role staff-role--vendor">vendedor</span>
+                      {% endif %}
+                      {% if not row.is_staff and not row.is_vendor %}
+                      <span class="item__desc">Sin rol especial</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.assignment %}
+                      <div class="item__desc">{{ row.assignment.stall.name }} · {{ row.assignment.spot.label }}</div>
+                      {% else %}
+                      <div class="item__desc">Sin asignacion</div>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <div class="staff-actions">
+                        <form method="post" action="{% url 'staff_panel' %}">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="grant_role" />
+                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
+                          <input type="hidden" name="group_name" value="staff" />
+                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
+                          <button class="btn btn--secondary staff-btn" type="submit" {% if row.is_staff %}disabled{% endif %}>Dar staff</button>
+                        </form>
+                        <form method="post" action="{% url 'staff_panel' %}">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="revoke_role" />
+                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
+                          <input type="hidden" name="group_name" value="staff" />
+                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
+                          <button class="btn btn--secondary staff-btn" type="submit" {% if not row.is_staff %}disabled{% endif %}>Quitar staff</button>
+                        </form>
+                        <form method="post" action="{% url 'staff_panel' %}">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="grant_role" />
+                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
+                          <input type="hidden" name="group_name" value="vendedor" />
+                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
+                          <button class="btn btn--secondary staff-btn" type="submit" {% if row.is_vendor %}disabled{% endif %}>Dar vendedor</button>
+                        </form>
+                        <form method="post" action="{% url 'staff_panel' %}">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="revoke_role" />
+                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
+                          <input type="hidden" name="group_name" value="vendedor" />
+                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
+                          <button class="btn btn--secondary staff-btn" type="submit" {% if not row.is_vendor %}disabled{% endif %}>Quitar vendedor</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="4">No se encontraron usuarios para este criterio.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card" style="margin-top: 14px;">
+            <h2 class="page-title staff-section-title">Asignar vendedor a puesto y espacio</h2>
+            <form class="form staff-assignment-form" method="post" action="{% url 'staff_panel' %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="assign_vendor" />
+              <input type="hidden" name="next_query" value="{{ current_query_string }}" />
+              <div class="field">
+                <label for="vendor_user_id">Usuario vendedor</label>
+                <select class="input" id="vendor_user_id" name="vendor_user_id" required>
+                  <option value="">Selecciona usuario</option>
+                  {% for membership in assignment_candidates %}
+                  <option value="{{ membership.user_id }}">{{ membership.user.username }}{% if membership.matricula %} ({{ membership.matricula }}){% endif %}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="stall_id">Puesto</label>
+                <select class="input" id="stall_id" name="stall_id" required>
+                  <option value="">Selecciona puesto</option>
+                  {% for stall in stalls %}
+                  <option value="{{ stall.id }}">{{ stall.name }} ({{ stall.code }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="spot_id">Espacio</label>
+                <select class="input" id="spot_id" name="spot_id" required>
+                  <option value="">Selecciona espacio</option>
+                  {% for row in spot_rows %}
+                  <option value="{{ row.spot.id }}" {% if row.is_taken %}disabled{% endif %}>
+                    {{ row.spot.label }} - {{ row.spot.zone.name }}{% if row.is_taken %} (ocupado por {{ row.taken_by }}){% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="actions-row">
+                <button class="btn btn--secondary" type="submit">Guardar asignacion</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card" style="margin-top: 14px;">
+            <h2 class="page-title staff-section-title">Asignaciones actuales</h2>
+            <div class="list">
+              {% for assignment in assignments %}
+              <article class="list-item">
+                <div>
+                  <div class="list-item__title">{{ assignment.stall.name }} ({{ assignment.stall.code }})</div>
+                  <div class="list-item__meta">{{ assignment.vendor_user.username }} · {{ assignment.spot.label }} · {{ assignment.spot.zone.name }}</div>
+                </div>
+                <div class="list-item__price">{{ assignment.assigned_at|date:"d/m H:i" }}</div>
+              </article>
+              {% empty %}
+              <article class="list-item">
+                <div>
+                  <div class="list-item__title">Sin asignaciones</div>
+                  <div class="list-item__meta">Aun no se han asignado vendedores a puestos.</div>
+                </div>
+                <div class="list-item__price">-</div>
+              </article>
+              {% endfor %}
+            </div>
+          </section>
+
+          <section class="card" style="margin-top: 14px;">
+            <h2 class="page-title staff-section-title">Bitacora reciente</h2>
+            <div class="table-wrap">
+              <table class="staff-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Staff</th>
+                    <th>Accion</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for log in audit_logs %}
+                  <tr>
+                    <td>{{ log.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ log.staff_user.username }}</td>
+                    <td>{{ log.action_type }}</td>
+                    <td>{{ log.payload_json }}</td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="4">Sin acciones registradas.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+</body>
+</html>

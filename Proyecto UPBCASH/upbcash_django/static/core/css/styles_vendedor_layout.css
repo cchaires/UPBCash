@@ -167,6 +167,12 @@ body{
   padding: 26px;
 }
 .main__inner{ width: min(920px, 100%); }
+.main__inner--scroll{
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+  padding-bottom: 24px;
+}
 
 .main__header{
   display: flex;
@@ -244,6 +250,13 @@ body{
   font-weight: 700;
   font-size: 13px;
 }
+.item__photo-img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
 .item__photo--taco{ background: linear-gradient(145deg, #f2c45c, #d98b2a); }
 .item__photo--cafe{ background: linear-gradient(145deg, #cfa48d, #8b5e3c); }
 .item__photo--agua{ background: linear-gradient(145deg, #8ed0f4, #3aa7d6); }
@@ -266,6 +279,84 @@ body{
   border-radius: 999px;
   padding: 4px 8px;
   font-size: 12px;
+}
+
+.form{
+  display: grid;
+  gap: 12px;
+}
+
+.form--wide{
+  gap: 14px;
+}
+
+.product-form-grid{
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field{
+  display: grid;
+  gap: 6px;
+}
+
+.field label{
+  font-weight: 700;
+}
+
+.field--inline{
+  align-content: center;
+}
+
+.input{
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.14);
+  background: #fff;
+  color: var(--text);
+}
+
+.inline-check{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.actions-row{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+}
+
+.btn{
+  border: none;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn--primary{
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent2) 100%);
+  color: #fff;
+  box-shadow: 0 14px 26px rgba(180, 130, 16, 0.25);
+}
+
+.btn--secondary{
+  background: rgba(91, 19, 126, 0.12);
+  border: 1px solid rgba(91, 19, 126, 0.2);
+  color: var(--text);
+}
+
+.btn--sm{
+  width: 100%;
+  text-align: center;
+  padding: 8px 12px;
 }
 
 .croquis-wrap{
@@ -379,6 +470,7 @@ body.layout-split .panel--croquis{ display: block; }
   .menu-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
   body.layout-split .main__grid{ grid-template-columns: 1fr; }
   .croquis-wrap{ grid-template-columns: 1fr; }
+  .product-form-grid{ grid-template-columns: 1fr; }
 }
 
 @media (max-width: 900px){

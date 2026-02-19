@@ -1,4 +1,7 @@
+from math import ceil
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -26,6 +29,11 @@ class StockMovementType(models.TextChoices):
     DECREASE = "decrease", "Decremento"
     ADJUST = "adjust", "Ajuste manual"
     SALE = "sale", "Venta"
+
+
+class ItemNature(models.TextChoices):
+    INVENTORIABLE = "inventoriable", "Inventariable"
+    NO_INVENTORIABLE = "no_inventoriable", "No inventariable"
 
 
 class MapZone(models.Model):
@@ -113,6 +121,38 @@ class StallAssignment(models.Model):
         return f"{self.event.code} - {self.vendor_user.username} -> {self.stall.code}"
 
 
+class ProductCategory(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    slug = models.SlugField(max_length=80, unique=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "name", "id"]
+
+    def __str__(self):
+        return self.name
+
+
+class ProductSubcategory(models.Model):
+    category = models.ForeignKey(ProductCategory, on_delete=models.CASCADE, related_name="subcategories")
+    name = models.CharField(max_length=80)
+    slug = models.SlugField(max_length=80, unique=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    default_photo_variant = models.CharField(max_length=32, default="combo")
+    default_image = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ["category__sort_order", "sort_order", "name", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["category", "name"], name="uniq_subcategory_name_by_category"),
+        ]
+
+    def __str__(self):
+        return f"{self.category.name} - {self.name}"
+
+
 class CatalogProduct(models.Model):
     sku = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=120)
@@ -132,9 +172,27 @@ class StallProduct(models.Model):
     stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name="products")
     catalog_product = models.ForeignKey(CatalogProduct, on_delete=models.PROTECT, related_name="stall_products")
     display_name = models.CharField(max_length=120)
+    item_nature = models.CharField(max_length=24, choices=ItemNature.choices, default=ItemNature.INVENTORIABLE)
+    category = models.ForeignKey(
+        ProductCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stall_products",
+    )
+    subcategory = models.ForeignKey(
+        ProductSubcategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stall_products",
+    )
     price_ucoin = models.DecimalField(max_digits=10, decimal_places=2)
+    cost_ucoin = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    image = models.FileField(upload_to="products/", null=True, blank=True)
     stock_mode = models.CharField(max_length=16, choices=StockMode.choices, default=StockMode.FINITE)
     stock_qty = models.PositiveIntegerField(null=True, blank=True)
+    stock_base_qty = models.PositiveIntegerField(null=True, blank=True)
     low_stock_threshold = models.PositiveIntegerField(null=True, blank=True)
     is_sold_out_manual = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -163,16 +221,58 @@ class StallProduct(models.Model):
         indexes = [
             models.Index(fields=["event", "stall", "is_active"]),
             models.Index(fields=["event", "is_active"]),
+            models.Index(fields=["event", "category", "subcategory"]),
+            models.Index(fields=["event", "item_nature", "is_active"]),
         ]
 
     def __str__(self):
         return f"{self.stall.name} - {self.display_name}"
 
+    @staticmethod
+    def threshold_from_base(stock_base_qty):
+        if stock_base_qty is None or stock_base_qty <= 0:
+            return None
+        return max(1, ceil(stock_base_qty * 0.15))
+
+    def clean(self):
+        if self.subcategory and self.category and self.subcategory.category_id != self.category_id:
+            raise ValidationError({"subcategory": "La subcategoria no corresponde a la categoria seleccionada."})
+        if self.cost_ucoin is not None and self.cost_ucoin < 0:
+            raise ValidationError({"cost_ucoin": "El costo no puede ser negativo."})
+
+    def _sync_stock_rules(self):
+        if self.item_nature == ItemNature.NO_INVENTORIABLE:
+            self.stock_mode = StockMode.UNLIMITED
+            self.stock_qty = None
+            self.stock_base_qty = None
+            self.low_stock_threshold = None
+            return
+
+        self.stock_mode = StockMode.FINITE
+        if self.stock_qty is None:
+            self.stock_qty = 0
+
+        if self.stock_base_qty is None or self.stock_qty > self.stock_base_qty:
+            self.stock_base_qty = self.stock_qty
+
+        self.low_stock_threshold = self.threshold_from_base(self.stock_base_qty)
+
+    def save(self, *args, **kwargs):
+        self._sync_stock_rules()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     @property
     def is_low_stock(self):
+        if self.item_nature != ItemNature.INVENTORIABLE:
+            return False
+        if not self.is_active or self.is_sold_out_manual:
+            return False
         if self.stock_mode != StockMode.FINITE:
             return False
         if self.stock_qty is None or self.low_stock_threshold is None:
+            return False
+        if self.stock_qty <= 0:
             return False
         return self.stock_qty <= self.low_stock_threshold
 

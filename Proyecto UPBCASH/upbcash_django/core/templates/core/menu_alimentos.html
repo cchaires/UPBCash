@@ -44,7 +44,12 @@
           <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
           <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
             <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
+            {% if can_view_vendor %}
             <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            {% endif %}
+            {% if can_view_staff %}
+            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
+            {% endif %}
             <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
           </div>
         </div>
@@ -54,8 +59,8 @@
         <div class="main__inner main__inner--scroll">
           <header class="main__header">
             <div>
-              <h1 class="page-title">Menu de alimentos</h1>
-              <p class="page-subtitle">Elige lo que quieras comprar.</p>
+              <h1 class="page-title">Menu por puesto</h1>
+              <p class="page-subtitle">Selecciona productos y agrega al carrito.</p>
             </div>
             <a class="btn btn--cart" href="{% url 'carrito_cliente' %}">
               Carrito de compras
@@ -63,37 +68,91 @@
             </a>
           </header>
 
+          <section class="card" style="margin-bottom: 14px;">
+            <form class="form filter-row" method="get" action="{% url 'menu_alimentos' %}">
+              <div class="field">
+                <label for="category">Categoria</label>
+                <select class="input" id="category" name="category">
+                  <option value="">Todas</option>
+                  {% for category in category_options %}
+                  <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>{{ category.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="subcategory">Subcategoria</label>
+                <select class="input" id="subcategory" name="subcategory">
+                  <option value="">Todas</option>
+                  {% for subcategory in subcategory_options %}
+                  <option value="{{ subcategory.slug }}" {% if selected_subcategory == subcategory.slug %}selected{% endif %}>{{ subcategory.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="item_nature">Tipo</label>
+                <select class="input" id="item_nature" name="item_nature">
+                  <option value="">Todos</option>
+                  {% for value, label in item_nature_options %}
+                  <option value="{{ value }}" {% if selected_item_nature == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="actions-row">
+                <button class="btn btn--secondary" type="submit">Filtrar</button>
+                <a class="btn btn--secondary" href="{% url 'menu_alimentos' %}">Limpiar</a>
+              </div>
+            </form>
+          </section>
+
           <section class="card">
             {% if messages %}
               {% for message in messages %}
-                <p class="helper" style="margin: 0 0 12px; color:{% if message.tags == 'error' %}#b00020{% else %}#2f8f5b{% endif %};">{{ message }}</p>
+                <p class="helper" style="margin: 0 0 12px; color:{% if message.tags == 'error' %}#b00020{% elif message.tags == 'warning' %}#7a5200{% else %}#2f8f5b{% endif %};">{{ message }}</p>
               {% endfor %}
             {% endif %}
 
-            <div class="menu-grid">
-              {% for item in menu_items %}
+            {% for stall_group in menu_stalls %}
+            <div class="stall-group">
+              <h2 class="stall-group__title">{{ stall_group.stall_name }}</h2>
+              <div class="menu-grid">
+                {% for item in stall_group.items %}
                 <article class="menu-item">
-                  <div class="item__photo item__photo--{{ item.photo_variant }}">{{ item.name }}</div>
+                  <div class="item__photo item__photo--{{ item.photo_variant }}">
+                    <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item__photo-img" />
+                  </div>
                   <div class="item__name">{{ item.name }}</div>
+                  <div class="item__desc">{{ item.category_name }}{% if item.subcategory_name %} · {{ item.subcategory_name }}{% endif %} · {{ item.item_nature_label }}</div>
                   <div class="item__desc">{{ item.description }}</div>
-                  <div class="item__price">${{ item.price|floatformat:2 }} <span class="item__badge">Disponible</span></div>
+                  <div class="item__price">
+                    ${{ item.price|floatformat:2 }}
+                    {% if item.is_low_stock %}
+                    <span class="item__badge item__badge--warning">Proximo a agotarse</span>
+                    {% else %}
+                    <span class="item__badge">Disponible</span>
+                    {% endif %}
+                  </div>
 
                   <form class="item__actions" method="post" action="{% url 'menu_alimentos' %}">
                     {% csrf_token %}
-                    <input type="hidden" name="item_code" value="{{ item.code }}" />
+                    <input type="hidden" name="stall_product_id" value="{{ item.id }}" />
+                    {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}" />{% endif %}
+                    {% if selected_subcategory %}<input type="hidden" name="subcategory" value="{{ selected_subcategory }}" />{% endif %}
+                    {% if selected_item_nature %}<input type="hidden" name="item_nature" value="{{ selected_item_nature }}" />{% endif %}
                     <button class="btn btn--primary btn--sm" type="submit" name="action" value="buy">Comprar</button>
                     <button class="btn btn--secondary btn--sm" type="submit" name="action" value="add">Agregar al carrito</button>
                   </form>
                 </article>
-              {% empty %}
-                <div class="list-item">
-                  <div>
-                    <div class="list-item__title">No hay productos disponibles</div>
-                    <div class="list-item__meta">Intenta de nuevo mas tarde.</div>
-                  </div>
-                </div>
-              {% endfor %}
+                {% endfor %}
+              </div>
             </div>
+            {% empty %}
+            <div class="list-item">
+              <div>
+                <div class="list-item__title">No hay productos disponibles</div>
+                <div class="list-item__meta">Intenta con otros filtros o vuelve mas tarde.</div>
+              </div>
+            </div>
+            {% endfor %}
           </section>
         </div>
       </main>

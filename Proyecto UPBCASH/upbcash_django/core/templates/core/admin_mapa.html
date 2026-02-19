@@ -35,14 +35,21 @@
         <div class="userbox">
           <div class="userbox__avatar">👤</div>
           <div class="userbox__info">
-            <div class="userbox__name">Fernando</div>
+            <div class="userbox__name">{{ user_display_name }}</div>
             <div class="userbox__sub">Administrador</div>
           </div>
           <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
           <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
             <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
+            {% if can_view_vendor %}
             <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            {% endif %}
+            {% if can_view_staff %}
+            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
+            {% endif %}
+            {% if can_view_admin %}
             <a href="{% url 'admin_inicio' %}" role="menuitem">Administrador</a>
+            {% endif %}
             <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
           </div>
         </div>
@@ -52,9 +59,52 @@
         <div class="main__inner main__inner--scroll">
           <section class="card">
             <h1 class="page-title">Mapa y ubicaciones</h1>
-            <p class="page-subtitle">Vista general de quioscos en el evento.</p>
+            {% if event %}
+            <p class="page-subtitle">Vista general de quioscos y espacios para {{ event.name }}.</p>
+            {% else %}
+            <p class="page-subtitle">No hay evento activo configurado.</p>
+            {% endif %}
             <div class="map-card">
               <img class="map-image" src="{% static 'core/img/mapa_upbc.png' %}" alt="Mapa del evento" />
+            </div>
+          </section>
+
+          <section class="card" style="margin-top: 14px;">
+            <div class="menu-grid">
+              <article class="menu-item">
+                <div class="item__name">Espacios disponibles</div>
+                <div class="item__desc">Sin asignacion</div>
+                <div class="item__price"><span>{{ available_spots }}</span></div>
+              </article>
+              <article class="menu-item">
+                <div class="item__name">Espacios asignados</div>
+                <div class="item__desc">Con vendedor activo</div>
+                <div class="item__price"><span>{{ assigned_spots }}</span></div>
+              </article>
+              <article class="menu-item">
+                <div class="item__name">Espacios bloqueados</div>
+                <div class="item__desc">Fuera de operacion</div>
+                <div class="item__price"><span>{{ blocked_spots }}</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="card" style="margin-top: 14px;">
+            <h2 class="page-title" style="font-size: 22px; margin-bottom: 8px;">Asignaciones de puestos</h2>
+            <div class="menu-grid">
+              {% for row in assignment_rows %}
+              <article class="menu-item">
+                <div class="item__name">{{ row.stall.name }}</div>
+                <div class="item__desc">{{ row.vendor_user.username }} · {{ row.spot.label }}{% if row.spot.zone %} ({{ row.spot.zone.name }}){% endif %}</div>
+                <div class="item__price"><span>Asignado</span></div>
+              </article>
+              {% empty %}
+              <article class="menu-item">
+                <div class="item__name">Sin asignaciones</div>
+                <div class="item__desc">Cuando staff asigne puestos y espacios apareceran aqui.</div>
+                <div class="item__price"><span>--</span></div>
+              </article>
+              {% endfor %}
             </div>
           </section>
         </div>

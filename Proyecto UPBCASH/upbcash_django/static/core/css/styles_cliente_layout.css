@@ -355,6 +355,13 @@ body{
   font-weight: 700;
   font-size: 13px;
 }
+.item__photo-img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
 .item__photo--taco{ background: linear-gradient(145deg, #f2c45c, #d98b2a); }
 .item__photo--cafe{ background: linear-gradient(145deg, #cfa48d, #8b5e3c); }
 .item__photo--agua{ background: linear-gradient(145deg, #8ed0f4, #3aa7d6); }
@@ -377,6 +384,11 @@ body{
   padding: 4px 8px;
   font-size: 12px;
   margin-left: auto;
+}
+.item__badge--warning{
+  background: rgba(215, 119, 0, 0.12);
+  color: #8a4c00;
+  border-color: rgba(215, 119, 0, 0.35);
 }
 
 .btn--secondary{
@@ -469,6 +481,10 @@ body{
   display: grid;
   gap: 14px;
 }
+.filter-row{
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+}
 
 .form--wide{
   gap: 16px;
@@ -513,6 +529,22 @@ body{
   border-radius: 12px;
 }
 
+.stall-group{
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stall-group:last-child{
+  margin-bottom: 0;
+}
+
+.stall-group__title{
+  margin: 0;
+  font-size: 18px;
+  color: var(--text);
+}
+
 /* Responsive (si lo haces más pequeño) */
 @media (max-width: 900px){
   .app-shell{
@@ -534,6 +566,7 @@ body{
   .card__banner img{ height: 220px; }
   .menu-grid{ grid-template-columns: 1fr; }
   .main__header{ flex-direction: column; align-items: flex-start; }
+  .filter-row{ grid-template-columns: 1fr; }
 }
 
 

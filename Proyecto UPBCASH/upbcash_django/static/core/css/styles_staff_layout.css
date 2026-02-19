@@ -1,0 +1,100 @@
+.staff-grid-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.staff-section-title {
+  margin: 0 0 14px;
+  font-size: 22px;
+}
+
+.staff-search {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.staff-table th,
+.staff-table td {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.staff-table th {
+  background: rgba(91, 19, 126, 0.12);
+  font-size: 13px;
+}
+
+.staff-role {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.staff-role--staff {
+  background: rgba(47, 143, 91, 0.14);
+  color: #2f8f5b;
+  border: 1px solid rgba(47, 143, 91, 0.35);
+}
+
+.staff-role--vendor {
+  background: rgba(215, 119, 0, 0.12);
+  color: #8a4c00;
+  border: 1px solid rgba(215, 119, 0, 0.35);
+}
+
+.staff-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.staff-btn {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.staff-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.staff-assignment-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
+@media (max-width: 900px) {
+  .staff-grid-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-search {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-assignment-form {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-actions {
+    grid-template-columns: 1fr;
+  }
+}

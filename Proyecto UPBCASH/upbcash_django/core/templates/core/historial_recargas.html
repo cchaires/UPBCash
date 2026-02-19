@@ -47,7 +47,12 @@
           <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
           <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
             <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
+            {% if can_view_vendor %}
             <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            {% endif %}
+            {% if can_view_staff %}
+            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
+            {% endif %}
             <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
           </div>
         </div>

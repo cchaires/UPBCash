@@ -94,3 +94,9 @@ def user_has_group(*, event, user, group_name):
 def assign_group_to_user(*, event, user, group_name):
     group = ensure_group(group_name)
     return EventUserGroup.objects.get_or_create(event=event, user=user, group=group)
+
+
+@transaction.atomic
+def remove_group_from_user(*, event, user, group_name):
+    deleted, _ = EventUserGroup.objects.filter(event=event, user=user, group__name=group_name).delete()
+    return deleted > 0

@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from accounting.services import WalletService
-from events.services import assert_event_writable, assign_group_to_user, user_has_group
+from events.services import assert_event_writable, assign_group_to_user, remove_group_from_user, user_has_group
 from stalls.models import MapSpotStatus, StallAssignment
 
 from .models import StaffAuditLog
@@ -31,6 +31,56 @@ class StaffOpsService:
             target_id=str(target_id),
             payload_json=payload or {},
         )
+
+    @classmethod
+    def _assert_allowed_group(cls, *, group_name):
+        if group_name not in {"vendedor", "staff"}:
+            raise ValueError("Solo se permite administrar los roles vendedor y staff.")
+
+    @classmethod
+    @transaction.atomic
+    def grant_role(cls, *, event, staff_user, target_user, group_name):
+        assert_event_writable(event)
+        cls._assert_staff(event=event, user=staff_user)
+        cls._assert_allowed_group(group_name=group_name)
+        assignment, created = assign_group_to_user(event=event, user=target_user, group_name=group_name)
+        cls._log_action(
+            event=event,
+            staff_user=staff_user,
+            action_type="grant_role",
+            target_model="events.EventUserGroup",
+            target_id=assignment.id,
+            payload={
+                "target_user_id": target_user.id,
+                "group_name": group_name,
+                "created": created,
+            },
+        )
+        return assignment, created
+
+    @classmethod
+    @transaction.atomic
+    def revoke_role(cls, *, event, staff_user, target_user, group_name):
+        assert_event_writable(event)
+        cls._assert_staff(event=event, user=staff_user)
+        cls._assert_allowed_group(group_name=group_name)
+        if group_name == "staff" and staff_user.id == target_user.id:
+            raise StaffPermissionError("No puedes remover tu propio rol staff.")
+
+        removed = remove_group_from_user(event=event, user=target_user, group_name=group_name)
+        cls._log_action(
+            event=event,
+            staff_user=staff_user,
+            action_type="revoke_role",
+            target_model="events.EventUserGroup",
+            target_id=target_user.id,
+            payload={
+                "target_user_id": target_user.id,
+                "group_name": group_name,
+                "removed": removed,
+            },
+        )
+        return removed
 
     @classmethod
     @transaction.atomic

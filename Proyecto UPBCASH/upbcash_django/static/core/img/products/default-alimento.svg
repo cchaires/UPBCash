@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img" aria-label="Alimento">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7d06c"/>
+      <stop offset="100%" stop-color="#d98b2a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#g)"/>
+  <circle cx="400" cy="225" r="120" fill="#fff4d5" opacity="0.85"/>
+  <text x="400" y="242" text-anchor="middle" font-family="Arial, sans-serif" font-size="44" fill="#6b3d03">Alimento</text>
+</svg>

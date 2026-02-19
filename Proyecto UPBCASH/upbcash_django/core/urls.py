@@ -19,6 +19,7 @@ urlpatterns = [
     path("vendedor/productos/", views.vendedor_productos, name="vendedor_productos"),
     path("vendedor/ventas/", views.vendedor_ventas, name="vendedor_ventas"),
     path("vendedor/mapa/", views.vendedor_mapa, name="vendedor_mapa"),
+    path("staff/", views.staff_panel, name="staff_panel"),
     path("administrador/", views.admin_inicio, name="admin_inicio"),
     path("administrador/mapa/", views.admin_mapa, name="admin_mapa"),
     path("cuenta/", views.mi_cuenta, name="mi_cuenta"),

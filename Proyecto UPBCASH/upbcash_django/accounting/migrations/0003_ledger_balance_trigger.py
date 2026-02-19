@@ -23,7 +23,11 @@ def create_balance_trigger(apps, schema_editor):
             WHERE transaction_id = target_tx;
 
             IF balance <> 0 THEN
-                RAISE EXCEPTION 'Ledger transaction % is not balanced. delta=%', target_tx, balance;
+                RAISE EXCEPTION USING
+                    MESSAGE = 'Ledger transaction '
+                        || target_tx::text
+                        || ' is not balanced. delta='
+                        || balance::text;
             END IF;
             RETURN NULL;
         END;
