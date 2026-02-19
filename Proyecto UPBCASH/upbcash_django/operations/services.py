@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.contrib.auth.models import Group
 from django.db import transaction
 
 from accounting.services import WalletService
@@ -14,6 +15,9 @@ class StaffPermissionError(PermissionError):
 
 
 class StaffOpsService:
+    BLOCKED_GROUP_NAMES = {"admin", "administrador", "superuser"}
+    DEFAULT_MANAGEABLE_GROUP_NAMES = {"cliente", "staff", "vendedor"}
+
     @classmethod
     def _assert_staff(cls, *, event, user):
         if user.is_superuser:
@@ -36,6 +40,72 @@ class StaffOpsService:
     def _assert_allowed_group(cls, *, group_name):
         if group_name not in {"vendedor", "staff"}:
             raise ValueError("Solo se permite administrar los roles vendedor y staff.")
+
+    @classmethod
+    def list_manageable_group_names(cls, *, event):
+        for group_name in cls.DEFAULT_MANAGEABLE_GROUP_NAMES:
+            Group.objects.get_or_create(name=group_name)
+
+        queryset = Group.objects.exclude(name__in=cls.BLOCKED_GROUP_NAMES).order_by("name")
+        return [group.name for group in queryset]
+
+    @classmethod
+    @transaction.atomic
+    def sync_user_roles(cls, *, event, staff_user, target_user, desired_group_names):
+        assert_event_writable(event)
+        cls._assert_staff(event=event, user=staff_user)
+
+        manageable_group_names = set(cls.list_manageable_group_names(event=event))
+        desired = {group_name for group_name in desired_group_names if group_name}
+        desired_manageable = desired & manageable_group_names
+
+        ignored = sorted(desired - manageable_group_names)
+        current_manageable = set(
+            event.user_groups.filter(
+                user=target_user,
+                group__name__in=manageable_group_names,
+            ).values_list("group__name", flat=True)
+        )
+
+        to_add = desired_manageable - current_manageable
+        to_remove = current_manageable - desired_manageable
+
+        if "cliente" in to_remove:
+            to_remove.remove("cliente")
+            ignored.append("cliente")
+
+        if target_user.id == staff_user.id and "staff" in to_remove:
+            to_remove.remove("staff")
+            ignored.append("staff")
+
+        added = []
+        for group_name in sorted(to_add):
+            _assignment, created = assign_group_to_user(event=event, user=target_user, group_name=group_name)
+            if created:
+                added.append(group_name)
+
+        removed = []
+        for group_name in sorted(to_remove):
+            if remove_group_from_user(event=event, user=target_user, group_name=group_name):
+                removed.append(group_name)
+
+        ignored = sorted(set(ignored))
+        payload = {
+            "target_user_id": target_user.id,
+            "desired": sorted(desired_manageable),
+            "added": added,
+            "removed": removed,
+            "ignored": ignored,
+        }
+        cls._log_action(
+            event=event,
+            staff_user=staff_user,
+            action_type="sync_roles",
+            target_model="events.EventUserGroup",
+            target_id=target_user.id,
+            payload=payload,
+        )
+        return payload
 
     @classmethod
     @transaction.atomic

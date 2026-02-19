@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -190,6 +191,7 @@ class StaffPanelAccessTests(TestCase):
                 user=user,
                 defaults={"profile_type": "comunidad", "matricula": f"MAT-{user.id}"},
             )
+            assign_group_to_user(event=self.event, user=user, group_name="cliente")
 
         assign_group_to_user(event=self.event, user=self.staff_user, group_name="staff")
         assign_group_to_user(event=self.event, user=self.vendor_user, group_name="vendedor")
@@ -260,14 +262,14 @@ class StaffPanelAccessTests(TestCase):
         response_matricula = self.client.get(reverse("staff_panel"), {"q": "A01234567"})
         self.assertContains(response_matricula, "search-me")
 
-    def test_staff_can_grant_and_revoke_vendor_role_with_audit(self):
+    def test_staff_can_sync_roles_with_audit(self):
         self.client.login(username="staff-user", password="secret")
         response_grant = self.client.post(
             reverse("staff_panel"),
             {
-                "action": "grant_role",
+                "action": "sync_roles",
                 "target_user_id": str(self.client_user.id),
-                "group_name": "vendedor",
+                "group_names": ["cliente", "vendedor"],
                 "next_query": "",
             },
             follow=True,
@@ -276,14 +278,14 @@ class StaffPanelAccessTests(TestCase):
         self.assertTrue(
             EventUserGroup.objects.filter(event=self.event, user=self.client_user, group__name="vendedor").exists()
         )
-        self.assertTrue(StaffAuditLog.objects.filter(event=self.event, action_type="grant_role").exists())
+        self.assertTrue(StaffAuditLog.objects.filter(event=self.event, action_type="sync_roles").exists())
 
         response_revoke = self.client.post(
             reverse("staff_panel"),
             {
-                "action": "revoke_role",
+                "action": "sync_roles",
                 "target_user_id": str(self.client_user.id),
-                "group_name": "vendedor",
+                "group_names": ["cliente"],
                 "next_query": "",
             },
             follow=True,
@@ -292,16 +294,20 @@ class StaffPanelAccessTests(TestCase):
         self.assertFalse(
             EventUserGroup.objects.filter(event=self.event, user=self.client_user, group__name="vendedor").exists()
         )
-        self.assertTrue(StaffAuditLog.objects.filter(event=self.event, action_type="revoke_role").exists())
+        latest_log = StaffAuditLog.objects.filter(event=self.event, action_type="sync_roles").first()
+        self.assertIsNotNone(latest_log)
+        self.assertIn("added", latest_log.payload_json)
+        self.assertIn("removed", latest_log.payload_json)
+        self.assertIn("ignored", latest_log.payload_json)
 
     def test_staff_cannot_revoke_own_staff_role(self):
         self.client.login(username="staff-user", password="secret")
         response = self.client.post(
             reverse("staff_panel"),
             {
-                "action": "revoke_role",
+                "action": "sync_roles",
                 "target_user_id": str(self.staff_user.id),
-                "group_name": "staff",
+                "group_names": ["cliente"],
                 "next_query": "",
             },
             follow=True,
@@ -335,3 +341,75 @@ class StaffPanelAccessTests(TestCase):
         self.assertEqual(assignment.stall_id, stall.id)
         self.assertEqual(assignment.spot_id, spot.id)
         self.assertTrue(StaffAuditLog.objects.filter(event=self.event, action_type="assign_vendor").exists())
+
+    def test_staff_panel_shows_dynamic_roles(self):
+        Group.objects.get_or_create(name="cajero")
+        self.client.login(username="staff-user", password="secret")
+        response = self.client.get(reverse("staff_panel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "cajero")
+
+    def test_staff_can_assign_multiple_roles_in_single_sync(self):
+        Group.objects.get_or_create(name="cajero")
+        Group.objects.get_or_create(name="mesero")
+        self.client.login(username="staff-user", password="secret")
+
+        response = self.client.post(
+            reverse("staff_panel"),
+            {
+                "action": "sync_roles",
+                "target_user_id": str(self.client_user.id),
+                "group_names": ["cliente", "vendedor", "cajero", "mesero"],
+                "next_query": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            EventUserGroup.objects.filter(event=self.event, user=self.client_user, group__name="vendedor").exists()
+        )
+        self.assertTrue(
+            EventUserGroup.objects.filter(event=self.event, user=self.client_user, group__name="cajero").exists()
+        )
+        self.assertTrue(
+            EventUserGroup.objects.filter(event=self.event, user=self.client_user, group__name="mesero").exists()
+        )
+
+    def test_staff_cannot_revoke_cliente_role(self):
+        self.client.login(username="staff-user", password="secret")
+        response = self.client.post(
+            reverse("staff_panel"),
+            {
+                "action": "sync_roles",
+                "target_user_id": str(self.client_user.id),
+                "next_query": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            EventUserGroup.objects.filter(event=self.event, user=self.client_user, group__name="cliente").exists()
+        )
+
+    def test_blocked_roles_not_rendered_or_applied(self):
+        Group.objects.get_or_create(name="admin")
+        self.client.login(username="staff-user", password="secret")
+
+        response = self.client.get(reverse("staff_panel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, ">admin<")
+
+        post_response = self.client.post(
+            reverse("staff_panel"),
+            {
+                "action": "sync_roles",
+                "target_user_id": str(self.client_user.id),
+                "group_names": ["cliente", "admin"],
+                "next_query": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(post_response.status_code, 200)
+        self.assertFalse(
+            EventUserGroup.objects.filter(event=self.event, user=self.client_user, group__name="admin").exists()
+        )

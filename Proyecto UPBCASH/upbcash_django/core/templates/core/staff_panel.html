@@ -131,15 +131,11 @@
                       <div class="item__desc">Matricula: {{ row.membership.matricula|default:"-" }}</div>
                     </td>
                     <td>
-                      {% if row.is_staff %}
-                      <span class="staff-role staff-role--staff">staff</span>
-                      {% endif %}
-                      {% if row.is_vendor %}
-                      <span class="staff-role staff-role--vendor">vendedor</span>
-                      {% endif %}
-                      {% if not row.is_staff and not row.is_vendor %}
+                      {% for role_name in row.group_names %}
+                      <span class="staff-role {% if role_name == 'staff' %}staff-role--staff{% elif role_name == 'vendedor' %}staff-role--vendor{% else %}staff-role--default{% endif %}">{{ role_name }}</span>
+                      {% empty %}
                       <span class="item__desc">Sin rol especial</span>
-                      {% endif %}
+                      {% endfor %}
                     </td>
                     <td>
                       {% if row.assignment %}
@@ -149,40 +145,34 @@
                       {% endif %}
                     </td>
                     <td>
-                      <div class="staff-actions">
-                        <form method="post" action="{% url 'staff_panel' %}">
-                          {% csrf_token %}
-                          <input type="hidden" name="action" value="grant_role" />
-                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
-                          <input type="hidden" name="group_name" value="staff" />
-                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
-                          <button class="btn btn--secondary staff-btn" type="submit" {% if row.is_staff %}disabled{% endif %}>Dar staff</button>
-                        </form>
-                        <form method="post" action="{% url 'staff_panel' %}">
-                          {% csrf_token %}
-                          <input type="hidden" name="action" value="revoke_role" />
-                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
-                          <input type="hidden" name="group_name" value="staff" />
-                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
-                          <button class="btn btn--secondary staff-btn" type="submit" {% if not row.is_staff %}disabled{% endif %}>Quitar staff</button>
-                        </form>
-                        <form method="post" action="{% url 'staff_panel' %}">
-                          {% csrf_token %}
-                          <input type="hidden" name="action" value="grant_role" />
-                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
-                          <input type="hidden" name="group_name" value="vendedor" />
-                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
-                          <button class="btn btn--secondary staff-btn" type="submit" {% if row.is_vendor %}disabled{% endif %}>Dar vendedor</button>
-                        </form>
-                        <form method="post" action="{% url 'staff_panel' %}">
-                          {% csrf_token %}
-                          <input type="hidden" name="action" value="revoke_role" />
-                          <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
-                          <input type="hidden" name="group_name" value="vendedor" />
-                          <input type="hidden" name="next_query" value="{{ current_query_string }}" />
-                          <button class="btn btn--secondary staff-btn" type="submit" {% if not row.is_vendor %}disabled{% endif %}>Quitar vendedor</button>
-                        </form>
-                      </div>
+                      <form method="post" action="{% url 'staff_panel' %}" class="staff-role-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="sync_roles" />
+                        <input type="hidden" name="target_user_id" value="{{ row.membership.user_id }}" />
+                        <input type="hidden" name="next_query" value="{{ current_query_string }}" />
+                        <div class="staff-role-grid">
+                          {% for role_name in manageable_groups %}
+                          <label class="staff-role-check{% if role_name == 'cliente' and role_name in row.group_names %} staff-role-check--locked{% elif role_name == 'staff' and role_name in row.group_names and row.membership.user_id == current_staff_user_id %} staff-role-check--locked{% endif %}">
+                            <input
+                              type="checkbox"
+                              name="group_names"
+                              value="{{ role_name }}"
+                              {% if role_name in row.group_names %}checked{% endif %}
+                              {% if role_name == 'cliente' and role_name in row.group_names %}disabled{% elif role_name == 'staff' and role_name in row.group_names and row.membership.user_id == current_staff_user_id %}disabled{% endif %}
+                            />
+                            <span>{{ role_name }}</span>
+                          </label>
+                          {% if role_name in row.group_names %}
+                            {% if role_name == 'cliente' %}
+                            <input type="hidden" name="group_names" value="{{ role_name }}" />
+                            {% elif role_name == 'staff' and row.membership.user_id == current_staff_user_id %}
+                            <input type="hidden" name="group_names" value="{{ role_name }}" />
+                            {% endif %}
+                          {% endif %}
+                          {% endfor %}
+                        </div>
+                        <button class="btn btn--secondary staff-btn" type="submit">Guardar roles</button>
+                      </form>
                     </td>
                   </tr>
                   {% empty %}

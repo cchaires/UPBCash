@@ -1123,11 +1123,13 @@ def staff_panel(request):
     if role_redirect:
         return role_redirect
 
+    manageable_groups = StaffOpsService.list_manageable_group_names(event=event)
+
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        if action in {"grant_role", "revoke_role"}:
+        if action == "sync_roles":
             target_user_id = (request.POST.get("target_user_id") or "").strip()
-            group_name = (request.POST.get("group_name") or "").strip()
+            desired_group_names = request.POST.getlist("group_names")
             if not target_user_id.isdigit():
                 messages.error(request, "Selecciona un usuario valido.")
                 return _staff_panel_redirect(request)
@@ -1142,28 +1144,26 @@ def staff_panel(request):
                 return _staff_panel_redirect(request)
 
             try:
-                if action == "grant_role":
-                    _assignment, created = StaffOpsService.grant_role(
-                        event=event,
-                        staff_user=request.user,
-                        target_user=target_membership.user,
-                        group_name=group_name,
-                    )
-                    if created:
-                        messages.success(request, f"Rol {group_name} asignado correctamente.")
-                    else:
-                        messages.info(request, f"El usuario ya cuenta con el rol {group_name}.")
+                role_changes = StaffOpsService.sync_user_roles(
+                    event=event,
+                    staff_user=request.user,
+                    target_user=target_membership.user,
+                    desired_group_names=desired_group_names,
+                )
+                added_count = len(role_changes["added"])
+                removed_count = len(role_changes["removed"])
+                ignored = role_changes["ignored"]
+
+                if added_count or removed_count:
+                    message = f"Roles actualizados (+{added_count}, -{removed_count})."
+                    if ignored:
+                        message = f"{message} Ignorados: {', '.join(ignored)}."
+                    messages.success(request, message)
                 else:
-                    removed = StaffOpsService.revoke_role(
-                        event=event,
-                        staff_user=request.user,
-                        target_user=target_membership.user,
-                        group_name=group_name,
-                    )
-                    if removed:
-                        messages.success(request, f"Rol {group_name} revocado correctamente.")
+                    if ignored:
+                        messages.warning(request, f"No se aplicaron cambios. Ignorados: {', '.join(ignored)}.")
                     else:
-                        messages.info(request, f"El usuario no tenia el rol {group_name}.")
+                        messages.info(request, "No hubo cambios de roles para este usuario.")
             except (StaffPermissionError, ValueError) as exc:
                 messages.error(request, str(exc))
             return _staff_panel_redirect(request)
@@ -1231,7 +1231,7 @@ def staff_panel(request):
         for row in EventUserGroup.objects.filter(
             event=event,
             user_id__in=user_ids,
-            group__name__in=["vendedor", "staff"],
+            group__name__in=manageable_groups,
         ).select_related("group"):
             groups_by_user[row.user_id].add(row.group.name)
 
@@ -1250,6 +1250,7 @@ def staff_panel(request):
         user_rows.append(
             {
                 "membership": membership,
+                "group_names": sorted(groups),
                 "is_staff": "staff" in groups,
                 "is_vendor": "vendedor" in groups,
                 "assignment": assignment,
@@ -1289,6 +1290,8 @@ def staff_panel(request):
         "event": event,
         "search_query": search_query,
         "current_query_string": request.GET.urlencode(),
+        "manageable_groups": manageable_groups,
+        "current_staff_user_id": request.user.id,
         "user_rows": user_rows,
         "assignment_candidates": EventMembership.objects.select_related("user")
         .filter(event=event)

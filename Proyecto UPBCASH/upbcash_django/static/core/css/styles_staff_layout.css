@@ -4,6 +4,24 @@
   gap: 12px;
 }
 
+/* Keep the shell fixed while allowing staff content to scroll vertically. */
+.main {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main__inner {
+  width: min(980px, 100%);
+  height: 100%;
+  min-height: 0;
+}
+
+.main__inner--scroll {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .staff-section-title {
   margin: 0 0 14px;
   font-size: 22px;
@@ -59,14 +77,46 @@
   border: 1px solid rgba(215, 119, 0, 0.35);
 }
 
-.staff-actions {
+.staff-role--default {
+  background: rgba(91, 19, 126, 0.12);
+  color: #4c1370;
+  border: 1px solid rgba(91, 19, 126, 0.3);
+}
+
+.staff-role-form {
+  display: grid;
+  gap: 10px;
+}
+
+.staff-role-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
+.staff-role-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.staff-role-check input[type="checkbox"] {
+  margin: 0;
+}
+
+.staff-role-check--locked {
+  opacity: 0.75;
+  border-style: dashed;
+}
+
 .staff-btn {
-  width: 100%;
+  width: max-content;
+  min-width: 140px;
   padding: 8px 10px;
   font-size: 12px;
 }
@@ -94,7 +144,7 @@
     grid-template-columns: 1fr;
   }
 
-  .staff-actions {
+  .staff-role-grid {
     grid-template-columns: 1fr;
   }
 }
