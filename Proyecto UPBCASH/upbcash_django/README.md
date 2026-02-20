@@ -22,10 +22,17 @@ Aplicacion web de UPBCash para gestion de UCoins por eventos/campanas con roles 
 ### 1) Panel staff y control de acceso por rol
 
 - Ruta staff: `GET/POST /staff/`.
+- Autorizacion por permisos implicitos de perfil (`django auth`):
+  - `cliente`, `vendedor`, `staff` con permisos por grupo.
+  - Fuente de verdad por evento: `events.EventUserGroup`.
+  - Sincronizacion a `auth.Group` para evaluacion con `user.has_perm`.
 - Reglas en `/vendedor/*`:
   - Requiere rol `vendedor` en evento activo.
   - Si usuario tiene `staff` pero no `vendedor`, redirecciona a `/staff/`.
   - Si no tiene `vendedor` ni `staff`, redirecciona a `/cliente/`.
+- Bloqueo por evento:
+  - Si no hay evento activo, `cliente` y `vendedor` quedan bloqueados.
+  - `staff` y `superuser` mantienen acceso operativo.
 - Dropdown de usuario condicionado por banderas globales:
   - `can_view_vendor`
   - `can_view_staff`
@@ -39,6 +46,8 @@ Aplicacion web de UPBCash para gestion de UCoins por eventos/campanas con roles 
 ### 2) Productos V2 por vendedor
 
 - Alta/edicion desde `vendedor/productos`.
+- Desactivacion logica (soft delete) desde `vendedor/productos`.
+- Imagen de tienda por puesto (`stalls.Stall.image`) editable por vendedor asignado.
 - Clasificacion:
   - Categoria y subcategoria.
   - Naturaleza: `Inventariable` / `No inventariable`.
@@ -57,6 +66,41 @@ Aplicacion web de UPBCash para gestion de UCoins por eventos/campanas con roles 
 - Carrito V2 con `commerce.CartItem`.
 - Checkout V2 con `CheckoutService`.
 - Historial de compras V2 con `SalesOrder` y `SalesOrderItem`.
+- Visibilidad de cliente solo para tiendas con espacio asignado (`StallLocationAssignment`) y ventana publica activa.
+
+### 4) Gestion visual de campañas/eventos y mapa de espacios
+
+- Evento separado en dos ventanas:
+  - Campaña interna (`starts_at`, `ends_at`) para staff/vendedor.
+  - Ventana publica (`public_starts_at`, `public_ends_at`) para cliente.
+- Configuracion por evento:
+  - `max_map_spots` (limite de espacios en mapa).
+  - `map_image` (imagen del estacionamiento).
+- Nuevos modelos de negocio:
+  - `stalls.StallVendorMembership` (hasta 3 vendedores por tienda, vendedor unico por evento).
+  - `stalls.StallLocationAssignment` (1 tienda <-> 1 spot por evento).
+- Nueva UI staff:
+  - `GET/POST /staff/eventos/` para alta/edicion de campañas.
+  - `GET /staff/mapa-asignacion/` para spots por click y asignacion visual.
+- Nueva UI vendedor:
+  - `GET/POST /vendedor/tienda/` para crear/editar tienda sin requerir spot.
+  - La tienda es editable sin spot, pero no visible a clientes hasta asignacion.
+- Regla operativa de tiendas/vendedores:
+  - Maximo 3 vendedores por tienda.
+  - Un vendedor no puede pertenecer a dos tiendas dentro del mismo evento.
+
+### 5) Compatibilidad y migraciones de la version
+
+- Migraciones nuevas aplicadas:
+  - `events.0005_eventcampaign_public_window_and_map`
+  - `stalls.0004_stall_vendor_membership_and_location`
+  - `stalls.0005_backfill_stall_assignment_v2`
+- Backfill de datos:
+  - La migracion `stalls.0005_backfill_stall_assignment_v2` copia asignaciones legado (`StallAssignment`) hacia:
+    - `StallVendorMembership`
+    - `StallLocationAssignment`
+- Compatibilidad:
+  - `StallAssignment` se mantiene en el esquema como soporte legado temporal, pero el flujo nuevo opera con los modelos V2.
 
 ## Arquitectura y modulos
 
@@ -240,6 +284,22 @@ docker compose logs -f db
 
 ## Migraciones, pruebas y comandos de validacion
 
+### Migraciones recomendadas para esta version
+
+En host:
+
+```bash
+python manage.py migrate events 0005
+python manage.py migrate stalls 0005
+```
+
+En Docker:
+
+```bash
+docker compose run --rm web python manage.py migrate events 0005
+docker compose run --rm web python manage.py migrate stalls 0005
+```
+
 En host (venv activo):
 
 ```bash
@@ -304,10 +364,13 @@ python manage.py close_event legacy-boot
 - `GET /cliente/menu/`
 - `GET /cliente/carrito/`
 - `GET /vendedor/`
+- `GET/POST /vendedor/tienda/`
 - `GET /vendedor/productos/`
 - `GET /vendedor/ventas/`
 - `GET /vendedor/mapa/`
 - `GET/POST /staff/`
+- `GET/POST /staff/eventos/`
+- `GET /staff/mapa-asignacion/`
 
 ## API
 
@@ -316,17 +379,46 @@ python manage.py close_event legacy-boot
 - `POST /api/events/{event_id}/staff/assign-vendor`
 - `POST /api/events/{event_id}/staff/assign-spot`
 - `POST /api/events/{event_id}/staff/grant-ucoins`
+- `GET /api/events/{event_id}/map/state`
+- `POST /api/events/{event_id}/map/spots`
+- `PATCH /api/events/{event_id}/map/spots/{spot_id}`
+- `DELETE /api/events/{event_id}/map/spots/{spot_id}`
+- `POST /api/events/{event_id}/stalls/{stall_id}/assign-spot`
+- `POST /api/events/{event_id}/stalls/{stall_id}/add-vendor`
+
+## Matriz de permisos por perfil
+
+- `cliente`:
+  - `events.access_cliente_portal`
+  - `events.checkout_cart`
+- `vendedor`:
+  - `events.access_vendedor_portal`
+  - `events.manage_vendor_products`
+  - `events.soft_delete_vendor_products`
+  - `events.manage_vendor_stall_image`
+  - `events.verify_order_qr`
+- `staff`:
+  - `events.access_staff_panel`
+  - `events.manage_event_profiles`
+  - `events.assign_vendor_stall`
+  - `events.grant_ucoins`
+- `superuser`:
+  - bypass de permisos y bloqueo por evento.
 
 ## Checklist de verificacion funcional
 
 1. Login correcto en `index`.
-2. Menu cliente carga productos por puesto.
-3. Badge de "Proximo a agotarse" aparece en productos con regla 15%.
-4. Carrito y checkout generan orden V2.
-5. Usuario staff entra a `/staff/` y puede buscar usuarios.
-6. Usuario sin rol vendedor no entra a `/vendedor/*`.
-7. Usuario vendedor puede abrir panel vendedor.
-8. Historial de compras muestra ordenes V2.
+2. Alta/edicion de campaña en `/staff/eventos/` valida que ventana publica quede dentro de ventana de campaña.
+3. Staff puede crear/mover/eliminar spots visualmente en `/staff/mapa-asignacion/` respetando `max_map_spots`.
+4. Staff puede asignar una tienda a un spot desde mapa y no se permiten duplicados de spot por tienda.
+5. Staff puede agregar vendedores a tienda hasta tope de 3 miembros por tienda.
+6. Vendedor puede crear/editar tienda en `/vendedor/tienda/` sin spot asignado.
+7. Tienda sin spot no aparece en mapa/menu cliente.
+8. Cliente solo puede operar durante ventana publica del evento.
+9. Menu cliente carga productos por puesto visible y badge de "Proximo a agotarse" aplica con regla 15%.
+10. Carrito y checkout generan orden V2.
+11. Usuario sin rol vendedor no entra a `/vendedor/*`; staff sin vendedor redirige a `/staff/`.
+12. Historial de compras muestra ordenes V2.
 
 ## Datos y persistencia (PostgreSQL Docker)
 

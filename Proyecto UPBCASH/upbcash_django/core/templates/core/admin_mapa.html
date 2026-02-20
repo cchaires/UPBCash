@@ -95,7 +95,7 @@
               {% for row in assignment_rows %}
               <article class="menu-item">
                 <div class="item__name">{{ row.stall.name }}</div>
-                <div class="item__desc">{{ row.vendor_user.username }} · {{ row.spot.label }}{% if row.spot.zone %} ({{ row.spot.zone.name }}){% endif %}</div>
+                <div class="item__desc">{{ row.spot.label }}{% if row.spot.zone %} ({{ row.spot.zone.name }}){% endif %}</div>
                 <div class="item__price"><span>Asignado</span></div>
               </article>
               {% empty %}

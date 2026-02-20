@@ -8,7 +8,9 @@ from .models import (
     ProductSubcategory,
     Stall,
     StallAssignment,
+    StallLocationAssignment,
     StallProduct,
+    StallVendorMembership,
     StockMovement,
 )
 
@@ -54,5 +56,7 @@ admin.site.register(MapZone)
 admin.site.register(MapSpot)
 admin.site.register(Stall)
 admin.site.register(StallAssignment)
+admin.site.register(StallVendorMembership)
+admin.site.register(StallLocationAssignment)
 admin.site.register(CatalogProduct)
 admin.site.register(StockMovement)

@@ -1,0 +1,140 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPBCash - Mi Tienda</title>
+  <link rel="stylesheet" href="{% static 'core/css/styles_vendedor_layout.css' %}" />
+</head>
+<body>
+  <div class="page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
+        </div>
+
+        <nav class="nav" aria-label="Secciones del vendedor">
+          <a class="nav__item" href="{% url 'vendedor' %}">
+            <span class="nav__icon">🏠</span><span>Inicio</span>
+          </a>
+          <a class="nav__item nav__item--active" href="{% url 'vendedor_tienda' %}">
+            <span class="nav__icon">🏪</span><span>Tienda</span>
+          </a>
+          <a class="nav__item" href="{% url 'vendedor_productos' %}">
+            <span class="nav__icon">🍽️</span><span>Productos</span>
+          </a>
+          <a class="nav__item" href="{% url 'vendedor_ventas' %}">
+            <span class="nav__icon">📊</span><span>Ventas</span>
+          </a>
+          <a class="nav__item" href="{% url 'vendedor_mapa' %}">
+            <span class="nav__icon">🗺️</span><span>Mapa</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__spacer"></div>
+
+        <div class="userbox">
+          <div class="userbox__avatar">👤</div>
+          <div class="userbox__info">
+            <div class="userbox__name">{{ user_display_name }}</div>
+            <div class="userbox__sub">Vendedor</div>
+          </div>
+          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
+          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
+            <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
+            {% if can_view_vendor %}
+            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
+            {% endif %}
+            {% if can_view_staff %}
+            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
+            {% endif %}
+            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main__inner main__inner--scroll">
+          <header class="main__header">
+            <div class="title-block">
+              <h1>Mi tienda</h1>
+              {% if event %}
+              <p>Configura datos de tienda e imagen durante la campaña.</p>
+              {% else %}
+              <p>No hay campaña activa.</p>
+              {% endif %}
+            </div>
+            <div class="status-pill">{% if event %}{{ event.name }}{% else %}Sin evento activo{% endif %}</div>
+          </header>
+
+          {% if messages %}
+          <section class="panel" style="margin-bottom: 16px;">
+            {% for message in messages %}
+            <p class="helper" style="margin: 0 0 10px; color:{% if message.tags == 'error' %}#b00020{% elif message.tags == 'warning' %}#7a5200{% else %}#2f8f5b{% endif %};">{{ message }}</p>
+            {% endfor %}
+          </section>
+          {% endif %}
+
+          <section class="panel" style="margin-bottom: 16px;">
+            <div class="panel__title">
+              <h2>{% if stall %}Editar tienda{% else %}Crear tienda{% endif %}</h2>
+            </div>
+            {% if event %}
+            <form method="post" enctype="multipart/form-data" class="form form--wide">
+              {% csrf_token %}
+              <div class="field">
+                <label for="name">Nombre de tienda</label>
+                <input class="input" id="name" name="name" type="text" maxlength="120" required value="{% if stall %}{{ stall.name }}{% endif %}" />
+              </div>
+              <div class="field">
+                <label for="code">Codigo corto</label>
+                <input class="input" id="code" name="code" type="text" maxlength="32" value="{% if stall %}{{ stall.code }}{% endif %}" />
+              </div>
+              <div class="field">
+                <label for="description">Descripcion</label>
+                <textarea class="input" id="description" name="description" rows="3">{% if stall %}{{ stall.description }}{% endif %}</textarea>
+              </div>
+              <div class="field">
+                <label for="image">Imagen de tienda</label>
+                <input class="input" id="image" name="image" type="file" accept="image/*" />
+                {% if stall and stall.image %}
+                <div style="margin-top: 8px;">
+                  <img src="{{ stall.image.url }}" alt="Imagen de tienda" style="max-width: 260px; border-radius: 8px;" />
+                </div>
+                <label class="inline-check"><input type="checkbox" name="remove_image" /> Quitar imagen actual</label>
+                {% endif %}
+              </div>
+              <div class="actions-row">
+                <button class="btn btn--primary" type="submit">{% if stall %}Guardar cambios{% else %}Crear tienda{% endif %}</button>
+              </div>
+            </form>
+            {% else %}
+            <p class="item__desc">No puedes editar tienda porque no hay una campaña activa.</p>
+            {% endif %}
+          </section>
+
+          <section class="panel">
+            <div class="panel__title">
+              <h2>Visibilidad para clientes</h2>
+            </div>
+            {% if stall %}
+              {% if stall_location %}
+              <p class="item__desc">Visible en mapa/menu cliente: <strong>SI</strong>. Espacio {{ stall_location.spot.label }}.</p>
+              {% else %}
+              <p class="item__desc">No visible en cliente hasta que staff asigne un espacio en mapa.</p>
+              {% endif %}
+              <p class="item__desc">Vendedores asignados: {{ stall_members|length }} / 3.</p>
+            {% else %}
+            <p class="item__desc">Todavia no tienes tienda para este evento.</p>
+            {% endif %}
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+</body>
+</html>

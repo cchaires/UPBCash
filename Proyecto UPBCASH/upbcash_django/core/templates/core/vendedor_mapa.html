@@ -19,6 +19,9 @@
           <a class="nav__item" href="{% url 'vendedor' %}">
             <span class="nav__icon">🏠</span><span>Inicio</span>
           </a>
+          <a class="nav__item" href="{% url 'vendedor_tienda' %}">
+            <span class="nav__icon">🏪</span><span>Tienda</span>
+          </a>
           <a class="nav__item" href="{% url 'vendedor_productos' %}">
             <span class="nav__icon">🍽️</span><span>Productos</span>
           </a>
@@ -65,12 +68,17 @@
                 <h3>Asignacion</h3>
                 {% if assignment %}
                 <p>{{ assignment.stall.name }}</p>
+                {% if assignment.spot %}
                 <div class="badge-slot">Espacio {{ assignment.spot.label }}</div>
                 <p>Zona: {{ assignment.spot.zone.name }}</p>
                 {% else %}
-                <p>No cuentas con una asignacion activa.</p>
+                <div class="badge-slot">Sin espacio asignado</div>
+                <p>Staff debe asignar tu tienda en el mapa.</p>
+                {% endif %}
+                {% else %}
+                <p>No cuentas con una tienda activa.</p>
                 <div class="badge-slot">Sin espacio</div>
-                <p>Solicita asignacion al personal staff.</p>
+                <p>Crea una tienda y luego solicita asignacion al staff.</p>
                 {% endif %}
               </div>
 

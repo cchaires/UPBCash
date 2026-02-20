@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import logging
 from urllib.parse import urlencode
@@ -20,8 +21,23 @@ from accounting.services import WalletService
 from commerce.models import CartItem as CommerceCartItem
 from commerce.models import OrderStatus, SalesOrder
 from commerce.services import CheckoutService
-from events.models import EventMembership, EventUserGroup, ProfileType
-from events.services import ensure_user_client_membership, get_active_event, user_has_group
+from events.authz import (
+    PERM_ACCESS_CLIENTE_PORTAL,
+    PERM_ACCESS_STAFF_PANEL,
+    PERM_ACCESS_VENDEDOR_PORTAL,
+    PERM_ASSIGN_VENDOR_STALL,
+    PERM_MANAGE_EVENT_PROFILES,
+    PERM_MANAGE_VENDOR_PRODUCTS,
+    PERM_MANAGE_VENDOR_STALL_IMAGE,
+    PERM_SOFT_DELETE_VENDOR_PRODUCTS,
+    build_authz_snapshot,
+    enforce_campaign_window_web,
+    enforce_event_lock_web,
+    enforce_public_window_web,
+    has_permission,
+)
+from events.models import CampaignStatus, EventCampaign, EventMembership, EventUserGroup, ProfileType
+from events.services import ensure_user_client_membership, get_active_campaign, validate_campaign_windows
 from operations.models import StaffAuditLog
 from operations.services import StaffOpsService, StaffPermissionError
 from stalls.models import (
@@ -32,8 +48,9 @@ from stalls.models import (
     ProductCategory,
     ProductSubcategory,
     Stall,
-    StallAssignment,
+    StallLocationAssignment,
     StallProduct,
+    StallVendorMembership,
     StallStatus,
     StockMode,
 )
@@ -112,14 +129,14 @@ def _create_profile_and_wallet(
 
 
 def _sync_legacy_wallet_balance_to_v2(*, user, legacy_balance):
-    event = get_active_event()
+    event = get_active_campaign()
     if not event:
         return
     WalletService.set_balance(event=event, user=user, balance=legacy_balance)
 
 
 def _sync_legacy_recharge_to_v2(*, user, recharge, amount):
-    event = get_active_event()
+    event = get_active_campaign()
     if not event:
         return
     WalletService.record_online_topup(
@@ -159,7 +176,11 @@ def _append_wallet_ledger(
 
 def index(request):
     if request.user.is_authenticated:
-        return redirect("cliente")
+        snapshot = build_authz_snapshot(user=request.user)
+        if snapshot.event or snapshot.can_bypass_event_lock:
+            return redirect("cliente")
+        error_message = "No hay un evento activo. El acceso se habilitara cuando inicie un nuevo evento."
+        return render(request, "core/index.html", {"error_message": error_message}, status=403)
 
     error_message = ""
 
@@ -172,7 +193,11 @@ def index(request):
             login(request, user)
             _wallet_for(user)
             ensure_user_client_membership(user=user)
-            return redirect("cliente")
+            snapshot = build_authz_snapshot(user=user)
+            if snapshot.event or snapshot.can_bypass_event_lock:
+                return redirect("cliente")
+            error_message = "No hay un evento activo. El acceso se habilitara cuando inicie un nuevo evento."
+            return render(request, "core/index.html", {"error_message": error_message}, status=403)
         error_message = "Credenciales invalidas."
 
     return render(request, "core/index.html", {"error_message": error_message})
@@ -307,6 +332,10 @@ def registro_invitado(request):
 
 @login_required(login_url="index")
 def cliente(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     saldo_actual = _wallet_for(request.user).balance
     return render(request, "core/cliente.html", {"saldo_actual": saldo_actual})
 
@@ -365,16 +394,20 @@ def _menu_photo_variant(product):
 def _menu_catalog_queryset(event):
     if not event:
         return StallProduct.objects.none()
+    visible_stall_ids = StallLocationAssignment.objects.filter(event=event).values_list("stall_id", flat=True)
     return (
         StallProduct.objects.select_related("stall", "catalog_product", "category", "subcategory")
-        .filter(event=event, is_active=True, stall__status=StallStatus.OPEN)
+        .filter(event=event, is_active=True, stall__status=StallStatus.OPEN, stall_id__in=visible_stall_ids)
         .order_by("stall__name", "display_name", "id")
     )
 
 
 @login_required(login_url="index")
 def menu_alimentos(request):
-    event = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     if not event:
         messages.error(request, "No hay un evento activo para mostrar el menu.")
         return render(
@@ -493,7 +526,10 @@ def menu_alimentos(request):
 
 @login_required(login_url="index")
 def carrito_cliente(request):
-    event = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     if not event:
         messages.error(request, "No hay evento activo para operar el carrito.")
         return redirect("menu_alimentos")
@@ -570,12 +606,43 @@ def carrito_cliente(request):
 
 @login_required(login_url="index")
 def cliente_mapa(request):
-    return render(request, "core/cliente_mapa.html")
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+    assignments = (
+        StallLocationAssignment.objects.select_related("stall", "spot", "spot__zone")
+        .filter(event=event, stall__status=StallStatus.OPEN)
+        .order_by("stall__name", "id")
+        if event
+        else []
+    )
+    map_spots = [
+        {
+            "label": row.spot.label,
+            "stall_name": row.stall.name,
+            "x_percent": float(row.spot.x) * 100,
+            "y_percent": float(row.spot.y) * 100,
+        }
+        for row in assignments
+    ]
+    return render(
+        request,
+        "core/cliente_mapa.html",
+        {
+            "event": event,
+            "map_image_url": event.map_image.url if event and event.map_image else static("core/img/mapa_upbc.png"),
+            "map_spots": map_spots,
+        },
+    )
 
 
 @login_required(login_url="index")
 def historial_compras(request):
-    event = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     order_items_qs = (
         SalesOrder.objects.filter(buyer_user=request.user)
         .prefetch_related("items")
@@ -611,6 +678,10 @@ def historial_compras(request):
 
 @login_required(login_url="index")
 def historial_recargas(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     recargas = Recharge.objects.filter(user=request.user).order_by("-created_at")
     return render(
         request,
@@ -623,6 +694,10 @@ def historial_recargas(request):
 
 @login_required(login_url="index")
 def reporte_recarga(request, recarga_id):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     recarga = get_object_or_404(Recharge, code=recarga_id.upper(), user=request.user)
     error_message = ""
 
@@ -656,6 +731,10 @@ def reporte_recarga(request, recarga_id):
 
 @login_required(login_url="index")
 def recarga(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     wallet = _wallet_for(request.user)
     error_message = ""
 
@@ -720,30 +799,67 @@ def _user_display_name(user):
 
 
 def _active_event_with_membership(user):
-    event = get_active_event()
+    snapshot = build_authz_snapshot(user=user)
+    event = snapshot.event
     if event:
         ensure_user_client_membership(user=user, event=event)
-    return event
+        snapshot = build_authz_snapshot(user=user, event=event)
+    return event, snapshot
 
 
-def _has_event_group(*, event, user, group_name):
-    if not event:
-        return False
-    return user_has_group(event=event, user=user, group_name=group_name)
+def _redirect_if_no_cliente_access(request, *, snapshot):
+    lock_redirect = enforce_event_lock_web(request=request, snapshot=snapshot)
+    if lock_redirect:
+        return lock_redirect
+    if not snapshot.can_bypass_event_lock:
+        public_redirect = enforce_public_window_web(
+            request=request,
+            snapshot=snapshot,
+            redirect_name="index",
+            message="La ventana publica del evento no esta activa para clientes.",
+        )
+        if public_redirect:
+            return public_redirect
 
-
-def _redirect_if_no_vendor_role(request, *, event):
-    if _has_event_group(event=event, user=request.user, group_name="vendedor"):
+    if (
+        has_permission(user=request.user, permission=PERM_ACCESS_CLIENTE_PORTAL, snapshot=snapshot)
+        or has_permission(user=request.user, permission=PERM_ACCESS_VENDEDOR_PORTAL, snapshot=snapshot)
+        or has_permission(user=request.user, permission=PERM_ACCESS_STAFF_PANEL, snapshot=snapshot)
+    ):
         return None
-    if _has_event_group(event=event, user=request.user, group_name="staff"):
+
+    messages.error(request, "No cuentas con permisos para acceder a este portal.")
+    return redirect("index")
+
+
+def _redirect_if_no_vendor_role(request, *, snapshot):
+    lock_redirect = enforce_event_lock_web(request=request, snapshot=snapshot)
+    if lock_redirect:
+        return lock_redirect
+
+    if has_permission(user=request.user, permission=PERM_ACCESS_VENDEDOR_PORTAL, snapshot=snapshot):
+        campaign_redirect = enforce_campaign_window_web(
+            request=request,
+            snapshot=snapshot,
+            redirect_name="index",
+            message="La ventana de campaña no esta activa para vendedores.",
+        )
+        if campaign_redirect:
+            return campaign_redirect
+        return None
+    if has_permission(user=request.user, permission=PERM_ACCESS_STAFF_PANEL, snapshot=snapshot):
         messages.error(request, "No cuentas con rol vendedor para este evento. Te redirigimos al panel staff.")
         return redirect("staff_panel")
     messages.error(request, "Solo perfiles vendedor pueden acceder a este panel.")
     return redirect("cliente")
 
 
-def _redirect_if_no_staff_role(request, *, event):
-    if _has_event_group(event=event, user=request.user, group_name="staff"):
+def _redirect_if_no_staff_role(request, *, snapshot):
+    lock_redirect = enforce_event_lock_web(request=request, snapshot=snapshot)
+    if lock_redirect:
+        return lock_redirect
+
+    if has_permission(user=request.user, permission=PERM_ACCESS_STAFF_PANEL, snapshot=snapshot):
         return None
     messages.error(request, "Solo personal staff puede acceder a este panel.")
     return redirect("cliente")
@@ -752,11 +868,23 @@ def _redirect_if_no_staff_role(request, *, event):
 def _vendor_assignment(event, user):
     if not event:
         return None
-    return (
-        StallAssignment.objects.select_related("stall", "spot", "spot__zone")
+    membership = (
+        StallVendorMembership.objects.select_related("stall")
         .filter(event=event, vendor_user=user)
+        .order_by("id")
         .first()
     )
+    if not membership:
+        return None
+    location = (
+        StallLocationAssignment.objects.select_related("spot", "spot__zone")
+        .filter(event=event, stall=membership.stall)
+        .order_by("-assigned_at", "-id")
+        .first()
+    )
+    membership.spot = location.spot if location else None  # template compatibility
+    membership.location_assignment = location
+    return membership
 
 
 def _safe_photo_variant(raw_value):
@@ -828,8 +956,8 @@ def _build_catalog_sku(event, stall, display_name):
 
 @login_required(login_url="index")
 def vendedor(request):
-    event = _active_event_with_membership(request.user)
-    role_redirect = _redirect_if_no_vendor_role(request, event=event)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_vendor_role(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
     assignment = _vendor_assignment(event, request.user)
@@ -883,6 +1011,7 @@ def vendedor(request):
         "user_display_name": _user_display_name(request.user),
         "event": event,
         "assignment": assignment,
+        "stall_image_url": assignment.stall.image.url if assignment and assignment.stall.image else "",
         "today_sales_total": today_metrics["total"] or Decimal("0.00"),
         "today_sales_count": today_metrics["total_orders"] or 0,
         "pending_orders": pending_orders,
@@ -893,9 +1022,77 @@ def vendedor(request):
 
 
 @login_required(login_url="index")
+def vendedor_tienda(request):
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_vendor_role(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+
+    membership = _vendor_assignment(event, request.user)
+    stall = membership.stall if membership else None
+    stall_location = StaffOpsService.get_stall_location(event=event, stall=stall) if event and stall else None
+
+    if request.method == "POST":
+        if not event:
+            messages.error(request, "No hay campaña activa para administrar tiendas.")
+            return redirect("vendedor_tienda")
+
+        name = (request.POST.get("name") or "").strip()
+        code = (request.POST.get("code") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        image_file = request.FILES.get("image")
+        remove_image = request.POST.get("remove_image") == "on"
+
+        if not name:
+            messages.error(request, "El nombre de la tienda es obligatorio.")
+            return redirect("vendedor_tienda")
+
+        if stall:
+            stall.name = name
+            if code:
+                stall.code = code[:32].strip().lower().replace(" ", "-")
+            stall.description = description
+            if image_file:
+                stall.image = image_file
+            elif remove_image and stall.image:
+                stall.image.delete(save=False)
+                stall.image = None
+            try:
+                stall.save()
+                messages.success(request, "Tienda actualizada correctamente.")
+            except Exception as exc:  # noqa: BLE001
+                messages.error(request, str(exc))
+            return redirect("vendedor_tienda")
+
+        try:
+            StaffOpsService.create_vendor_stall(
+                event=event,
+                vendor_user=request.user,
+                name=name,
+                code=code,
+                description=description,
+                image=image_file,
+            )
+            messages.success(request, "Tienda creada correctamente.")
+        except Exception as exc:  # noqa: BLE001
+            messages.error(request, str(exc))
+        return redirect("vendedor_tienda")
+
+    context = {
+        "user_display_name": _user_display_name(request.user),
+        "event": event,
+        "membership": membership,
+        "stall": stall,
+        "stall_location": stall_location,
+        "stall_members": StaffOpsService.get_stall_memberships(event=event, stall=stall) if event and stall else [],
+    }
+    return render(request, "core/vendedor_tienda.html", context)
+
+
+@login_required(login_url="index")
 def vendedor_productos(request):
-    event = _active_event_with_membership(request.user)
-    role_redirect = _redirect_if_no_vendor_role(request, event=event)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_vendor_role(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
     assignment = _vendor_assignment(event, request.user)
@@ -914,12 +1111,68 @@ def vendedor_productos(request):
 
     if request.method == "POST":
         if not event or not stall:
-            messages.error(request, "Necesitas un evento activo y un puesto asignado para administrar productos.")
+            messages.error(request, "Necesitas un evento activo y una tienda creada para administrar productos.")
             return redirect("vendedor_productos")
 
-        action = request.POST.get("action", "save_product")
+        action = (request.POST.get("action") or "save_product").strip()
+        if action == "update_stall_image":
+            if not has_permission(user=request.user, permission=PERM_MANAGE_VENDOR_STALL_IMAGE, snapshot=snapshot):
+                messages.error(request, "No cuentas con permisos para administrar la imagen de tienda.")
+                return redirect("vendedor_productos")
+
+            image_file = request.FILES.get("stall_image")
+            remove_stall_image = request.POST.get("remove_stall_image") == "on"
+
+            if image_file:
+                stall.image = image_file
+                stall.save(update_fields=["image"])
+                messages.success(request, "Imagen de tienda actualizada.")
+                return redirect("vendedor_productos")
+
+            if remove_stall_image and stall.image:
+                stall.image.delete(save=False)
+                stall.image = None
+                stall.save(update_fields=["image"])
+                messages.success(request, "Imagen de tienda eliminada.")
+                return redirect("vendedor_productos")
+
+            messages.info(request, "No se detectaron cambios para la imagen de tienda.")
+            return redirect("vendedor_productos")
+
+        if action == "delete_product":
+            if not has_permission(user=request.user, permission=PERM_SOFT_DELETE_VENDOR_PRODUCTS, snapshot=snapshot):
+                messages.error(request, "No cuentas con permisos para desactivar productos.")
+                return redirect("vendedor_productos")
+
+            product_id = (request.POST.get("product_id") or "").strip()
+            if not product_id.isdigit():
+                messages.error(request, "Selecciona un producto valido para desactivar.")
+                return redirect("vendedor_productos")
+
+            target_product = (
+                StallProduct.objects.select_related("catalog_product")
+                .filter(event=event, stall=stall, id=int(product_id))
+                .first()
+            )
+            if not target_product:
+                messages.error(request, "El producto a desactivar no fue encontrado.")
+                return redirect("vendedor_productos")
+
+            if not target_product.is_active:
+                messages.info(request, "El producto ya estaba desactivado.")
+                return redirect("vendedor_productos")
+
+            target_product.is_active = False
+            target_product.save(update_fields=["is_active", "updated_at"])
+            messages.success(request, "Producto desactivado correctamente.")
+            return redirect("vendedor_productos")
+
         if action != "save_product":
             messages.error(request, "Accion no valida para productos.")
+            return redirect("vendedor_productos")
+
+        if not has_permission(user=request.user, permission=PERM_MANAGE_VENDOR_PRODUCTS, snapshot=snapshot):
+            messages.error(request, "No cuentas con permisos para crear o editar productos.")
             return redirect("vendedor_productos")
 
         product_id = (request.POST.get("product_id") or "").strip()
@@ -1039,6 +1292,7 @@ def vendedor_productos(request):
         "user_display_name": _user_display_name(request.user),
         "event": event,
         "assignment": assignment,
+        "stall_image_url": stall.image.url if stall and stall.image else "",
         "stall_products": _vendor_products_for_stall(event, stall),
         "category_options": category_options,
         "subcategory_options": subcategory_options,
@@ -1053,8 +1307,8 @@ def vendedor_productos(request):
 
 @login_required(login_url="index")
 def vendedor_ventas(request):
-    event = _active_event_with_membership(request.user)
-    role_redirect = _redirect_if_no_vendor_role(request, event=event)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_vendor_role(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
     assignment = _vendor_assignment(event, request.user)
@@ -1087,8 +1341,8 @@ def vendedor_ventas(request):
 
 @login_required(login_url="index")
 def vendedor_mapa(request):
-    event = _active_event_with_membership(request.user)
-    role_redirect = _redirect_if_no_vendor_role(request, event=event)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_vendor_role(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
 
@@ -1114,12 +1368,8 @@ def _staff_panel_redirect(request):
 
 @login_required(login_url="index")
 def staff_panel(request):
-    event = _active_event_with_membership(request.user)
-    if not event:
-        messages.error(request, "No hay un evento activo para administrar roles.")
-        return redirect("cliente")
-
-    role_redirect = _redirect_if_no_staff_role(request, event=event)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_staff_role(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
 
@@ -1127,103 +1377,67 @@ def staff_panel(request):
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        if action == "sync_roles":
-            target_user_id = (request.POST.get("target_user_id") or "").strip()
-            desired_group_names = request.POST.getlist("group_names")
-            if not target_user_id.isdigit():
-                messages.error(request, "Selecciona un usuario valido.")
-                return _staff_panel_redirect(request)
+        if action != "sync_roles":
+            messages.error(request, "Accion no valida en panel staff.")
+            return _staff_panel_redirect(request)
+        if not event:
+            messages.error(request, "No hay un evento activo para ejecutar acciones de staff.")
+            return _staff_panel_redirect(request)
+        if not has_permission(user=request.user, permission=PERM_MANAGE_EVENT_PROFILES, snapshot=snapshot):
+            messages.error(request, "No cuentas con permisos para gestionar perfiles.")
+            return _staff_panel_redirect(request)
 
-            target_membership = (
-                EventMembership.objects.select_related("user")
-                .filter(event=event, user_id=int(target_user_id))
-                .first()
+        target_user_id = (request.POST.get("target_user_id") or "").strip()
+        desired_group_names = request.POST.getlist("group_names")
+        if not target_user_id.isdigit():
+            messages.error(request, "Selecciona un usuario valido.")
+            return _staff_panel_redirect(request)
+
+        target_membership = (
+            EventMembership.objects.select_related("user")
+            .filter(event=event, user_id=int(target_user_id))
+            .first()
+        )
+        if not target_membership:
+            messages.error(request, "El usuario no pertenece al evento activo.")
+            return _staff_panel_redirect(request)
+
+        try:
+            role_changes = StaffOpsService.sync_user_roles(
+                event=event,
+                staff_user=request.user,
+                target_user=target_membership.user,
+                desired_group_names=desired_group_names,
             )
-            if not target_membership:
-                messages.error(request, "El usuario no pertenece al evento activo.")
-                return _staff_panel_redirect(request)
+            added_count = len(role_changes["added"])
+            removed_count = len(role_changes["removed"])
+            ignored = role_changes["ignored"]
 
-            try:
-                role_changes = StaffOpsService.sync_user_roles(
-                    event=event,
-                    staff_user=request.user,
-                    target_user=target_membership.user,
-                    desired_group_names=desired_group_names,
-                )
-                added_count = len(role_changes["added"])
-                removed_count = len(role_changes["removed"])
-                ignored = role_changes["ignored"]
-
-                if added_count or removed_count:
-                    message = f"Roles actualizados (+{added_count}, -{removed_count})."
-                    if ignored:
-                        message = f"{message} Ignorados: {', '.join(ignored)}."
-                    messages.success(request, message)
+            if added_count or removed_count:
+                message = f"Roles actualizados (+{added_count}, -{removed_count})."
+                if ignored:
+                    message = f"{message} Ignorados: {', '.join(ignored)}."
+                messages.success(request, message)
+            else:
+                if ignored:
+                    messages.warning(request, f"No se aplicaron cambios. Ignorados: {', '.join(ignored)}.")
                 else:
-                    if ignored:
-                        messages.warning(request, f"No se aplicaron cambios. Ignorados: {', '.join(ignored)}.")
-                    else:
-                        messages.info(request, "No hubo cambios de roles para este usuario.")
-            except (StaffPermissionError, ValueError) as exc:
-                messages.error(request, str(exc))
-            return _staff_panel_redirect(request)
-
-        if action == "assign_vendor":
-            vendor_user_id = (request.POST.get("vendor_user_id") or "").strip()
-            stall_id = (request.POST.get("stall_id") or "").strip()
-            spot_id = (request.POST.get("spot_id") or "").strip()
-
-            if not (vendor_user_id.isdigit() and stall_id.isdigit() and spot_id.isdigit()):
-                messages.error(request, "Selecciona vendedor, puesto y espacio.")
-                return _staff_panel_redirect(request)
-
-            vendor_membership = (
-                EventMembership.objects.select_related("user")
-                .filter(event=event, user_id=int(vendor_user_id))
-                .first()
-            )
-            stall = Stall.objects.filter(event=event, id=int(stall_id)).first()
-            spot = MapSpot.objects.filter(event=event, id=int(spot_id)).first()
-            if not vendor_membership or not stall or not spot:
-                messages.error(request, "Los datos de asignacion no son validos para el evento activo.")
-                return _staff_panel_redirect(request)
-            if spot.status == MapSpotStatus.BLOCKED:
-                messages.error(request, "El espacio seleccionado esta bloqueado.")
-                return _staff_panel_redirect(request)
-            spot_taken = (
-                StallAssignment.objects.filter(event=event, spot=spot)
-                .exclude(vendor_user=vendor_membership.user)
-                .exists()
-            )
-            if spot_taken:
-                messages.error(request, "El espacio seleccionado ya esta asignado a otro vendedor.")
-                return _staff_panel_redirect(request)
-
-            try:
-                StaffOpsService.assign_vendor(
-                    event=event,
-                    staff_user=request.user,
-                    vendor_user=vendor_membership.user,
-                    stall=stall,
-                    spot=spot,
-                )
-                messages.success(request, "Asignacion vendedor->puesto->espacio actualizada.")
-            except Exception as exc:  # noqa: BLE001
-                messages.error(request, str(exc))
-            return _staff_panel_redirect(request)
-
-        messages.error(request, "Accion no valida en panel staff.")
+                    messages.info(request, "No hubo cambios de roles para este usuario.")
+        except (StaffPermissionError, ValueError) as exc:
+            messages.error(request, str(exc))
         return _staff_panel_redirect(request)
 
     search_query = (request.GET.get("q") or "").strip()
-    memberships_qs = EventMembership.objects.select_related("user").filter(event=event).order_by("user__username", "id")
-    if search_query:
-        memberships_qs = memberships_qs.filter(
-            Q(user__username__icontains=search_query)
-            | Q(user__email__icontains=search_query)
-            | Q(matricula__icontains=search_query)
-        )
-    memberships = list(memberships_qs[:100])
+    memberships = []
+    if event:
+        memberships_qs = EventMembership.objects.select_related("user").filter(event=event).order_by("user__username", "id")
+        if search_query:
+            memberships_qs = memberships_qs.filter(
+                Q(user__username__icontains=search_query)
+                | Q(user__email__icontains=search_query)
+                | Q(matricula__icontains=search_query)
+            )
+        memberships = list(memberships_qs[:100])
     user_ids = [membership.user_id for membership in memberships]
 
     groups_by_user = defaultdict(set)
@@ -1235,54 +1449,48 @@ def staff_panel(request):
         ).select_related("group"):
             groups_by_user[row.user_id].add(row.group.name)
 
-    assignments_by_user = {}
+    vendor_memberships_by_user = {}
+    stall_ids = set()
     if user_ids:
-        for assignment in StallAssignment.objects.select_related("stall", "spot", "spot__zone").filter(
+        for vendor_membership in StallVendorMembership.objects.select_related("stall").filter(
             event=event,
             vendor_user_id__in=user_ids,
         ):
-            assignments_by_user[assignment.vendor_user_id] = assignment
+            vendor_memberships_by_user[vendor_membership.vendor_user_id] = vendor_membership
+            stall_ids.add(vendor_membership.stall_id)
+
+    location_by_stall = {}
+    if stall_ids:
+        for location in StallLocationAssignment.objects.select_related("spot", "spot__zone").filter(
+            event=event,
+            stall_id__in=stall_ids,
+        ):
+            location_by_stall[location.stall_id] = location
 
     user_rows = []
     for membership in memberships:
         groups = groups_by_user.get(membership.user_id, set())
-        assignment = assignments_by_user.get(membership.user_id)
+        vendor_membership = vendor_memberships_by_user.get(membership.user_id)
+        location = location_by_stall.get(vendor_membership.stall_id) if vendor_membership else None
         user_rows.append(
             {
                 "membership": membership,
                 "group_names": sorted(groups),
                 "is_staff": "staff" in groups,
                 "is_vendor": "vendedor" in groups,
-                "assignment": assignment,
+                "vendor_membership": vendor_membership,
+                "location_assignment": location,
             }
         )
 
-    stalls = list(Stall.objects.filter(event=event).order_by("name", "id"))
-    spots = list(
-        MapSpot.objects.select_related("zone")
-        .filter(event=event)
-        .exclude(status=MapSpotStatus.BLOCKED)
-        .order_by("zone__sort_order", "label", "id")
-    )
-    assignments = list(
-        StallAssignment.objects.select_related("stall", "spot", "spot__zone", "vendor_user")
-        .filter(event=event)
-        .order_by("stall__name", "id")
-    )
-    spot_taken_by = {assignment.spot_id: _user_display_name(assignment.vendor_user) for assignment in assignments}
-    spot_rows = [
-        {
-            "spot": spot,
-            "is_taken": spot.id in spot_taken_by,
-            "taken_by": spot_taken_by.get(spot.id, ""),
-        }
-        for spot in spots
-    ]
-
-    audit_logs = list(
-        StaffAuditLog.objects.select_related("staff_user")
-        .filter(event=event)
-        .order_by("-created_at", "-id")[:25]
+    audit_logs = (
+        list(
+            StaffAuditLog.objects.select_related("staff_user")
+            .filter(event=event)
+            .order_by("-created_at", "-id")[:25]
+        )
+        if event
+        else []
     )
 
     context = {
@@ -1293,28 +1501,170 @@ def staff_panel(request):
         "manageable_groups": manageable_groups,
         "current_staff_user_id": request.user.id,
         "user_rows": user_rows,
-        "assignment_candidates": EventMembership.objects.select_related("user")
-        .filter(event=event)
-        .order_by("user__username", "id")[:200],
-        "stalls": stalls,
-        "spot_rows": spot_rows,
-        "assignments": assignments,
+        "can_manage_assignments": has_permission(
+            user=request.user,
+            permission=PERM_ASSIGN_VENDOR_STALL,
+            snapshot=snapshot,
+        ),
         "audit_logs": audit_logs,
-        "total_users": EventMembership.objects.filter(event=event).count(),
+        "total_users": EventMembership.objects.filter(event=event).count() if event else 0,
         "total_staff": (
             EventUserGroup.objects.filter(event=event, group__name="staff").values("user_id").distinct().count()
+            if event
+            else 0
         ),
         "total_vendors": (
             EventUserGroup.objects.filter(event=event, group__name="vendedor").values("user_id").distinct().count()
+            if event
+            else 0
         ),
-        "total_assignments": StallAssignment.objects.filter(event=event).count(),
+        "total_assignments": StallLocationAssignment.objects.filter(event=event).count() if event else 0,
     }
     return render(request, "core/staff_panel.html", context)
 
 
+def _parse_datetime_local(raw_value):
+    cleaned = (raw_value or "").strip()
+    if not cleaned:
+        return None
+    try:
+        naive = datetime.strptime(cleaned, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+    if timezone.is_naive(naive):
+        return timezone.make_aware(naive, timezone.get_current_timezone())
+    return naive
+
+
+@login_required(login_url="index")
+def staff_eventos(request):
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_staff_role(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+
+    editing_event_id = (request.GET.get("event_id") or request.POST.get("event_id") or "").strip()
+    editing_event = EventCampaign.objects.filter(id=editing_event_id).first() if editing_event_id.isdigit() else event
+
+    if request.method == "POST":
+        if not has_permission(user=request.user, permission=PERM_MANAGE_EVENT_PROFILES, snapshot=snapshot):
+            messages.error(request, "No cuentas con permisos para administrar campañas/eventos.")
+            return redirect("staff_eventos")
+
+        code = (request.POST.get("code") or "").strip().lower()
+        name = (request.POST.get("name") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        status = (request.POST.get("status") or CampaignStatus.DRAFT).strip()
+        starts_at = _parse_datetime_local(request.POST.get("starts_at"))
+        ends_at = _parse_datetime_local(request.POST.get("ends_at"))
+        public_starts_at = _parse_datetime_local(request.POST.get("public_starts_at"))
+        public_ends_at = _parse_datetime_local(request.POST.get("public_ends_at"))
+        max_map_spots_raw = (request.POST.get("max_map_spots") or "").strip()
+        map_image = request.FILES.get("map_image")
+        remove_map_image = request.POST.get("remove_map_image") == "on"
+
+        if not code or not name or not starts_at or not ends_at:
+            messages.error(request, "Codigo, nombre y ventanas de campaña son obligatorios.")
+            return redirect("staff_eventos")
+
+        if status not in {choice for choice, _ in CampaignStatus.choices}:
+            status = CampaignStatus.DRAFT
+
+        try:
+            max_map_spots = int(max_map_spots_raw or "0")
+        except ValueError:
+            messages.error(request, "El maximo de espacios debe ser un numero entero.")
+            return redirect("staff_eventos")
+        if max_map_spots <= 0:
+            messages.error(request, "El maximo de espacios debe ser mayor a cero.")
+            return redirect("staff_eventos")
+
+        try:
+            resolved_public_starts, resolved_public_ends = validate_campaign_windows(
+                starts_at=starts_at,
+                ends_at=ends_at,
+                public_starts_at=public_starts_at,
+                public_ends_at=public_ends_at,
+            )
+        except Exception as exc:  # noqa: BLE001
+            messages.error(request, str(exc))
+            return redirect("staff_eventos")
+
+        target_event = editing_event or EventCampaign()
+        target_event.code = code
+        target_event.name = name
+        target_event.description = description
+        target_event.starts_at = starts_at
+        target_event.ends_at = ends_at
+        target_event.public_starts_at = resolved_public_starts
+        target_event.public_ends_at = resolved_public_ends
+        target_event.status = status
+        target_event.max_map_spots = max_map_spots
+        if map_image:
+            target_event.map_image = map_image
+        elif remove_map_image and target_event.map_image:
+            target_event.map_image.delete(save=False)
+            target_event.map_image = None
+
+        try:
+            target_event.full_clean()
+            target_event.save()
+        except Exception as exc:  # noqa: BLE001
+            messages.error(request, str(exc))
+            return redirect("staff_eventos")
+
+        if target_event.status == CampaignStatus.ACTIVE:
+            EventCampaign.objects.exclude(id=target_event.id).filter(status=CampaignStatus.ACTIVE).update(
+                status=CampaignStatus.DRAFT
+            )
+        messages.success(request, "Campaña/evento guardado correctamente.")
+        return redirect(f"{reverse('staff_eventos')}?event_id={target_event.id}")
+
+    campaigns = list(EventCampaign.objects.order_by("-starts_at", "-id")[:50])
+    context = {
+        "user_display_name": _user_display_name(request.user),
+        "event": event,
+        "campaigns": campaigns,
+        "editing_event": editing_event,
+        "campaign_statuses": CampaignStatus.choices,
+    }
+    return render(request, "core/staff_eventos.html", context)
+
+
+@login_required(login_url="index")
+def staff_mapa_asignacion(request):
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_staff_role(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+    if not event:
+        messages.error(request, "No hay evento activo para administrar el mapa.")
+        return redirect("staff_eventos")
+    if not has_permission(user=request.user, permission=PERM_ASSIGN_VENDOR_STALL, snapshot=snapshot):
+        messages.error(request, "No cuentas con permisos para asignar espacios y vendedores.")
+        return redirect("staff_panel")
+    campaign_redirect = enforce_campaign_window_web(
+        request=request,
+        snapshot=snapshot,
+        redirect_name="staff_eventos",
+        message="La ventana de campaña no esta activa para asignaciones de mapa.",
+    )
+    if campaign_redirect:
+        return campaign_redirect
+
+    context = {
+        "user_display_name": _user_display_name(request.user),
+        "event": event,
+        "map_image_url": event.map_image.url if event.map_image else static("core/img/mapa_upbc.png"),
+        "stalls": Stall.objects.filter(event=event).order_by("name", "id"),
+        "spot_count": MapSpot.objects.filter(event=event).count(),
+    }
+    return render(request, "core/staff_mapa_asignacion.html", context)
+
+
 @login_required(login_url="index")
 def admin_inicio(request):
-    event = _active_event_with_membership(request.user)
+    event, _snapshot = _active_event_with_membership(request.user)
     orders_qs = SalesOrder.objects.none()
     stalls_qs = Stall.objects.none()
     if event:
@@ -1351,11 +1701,11 @@ def admin_inicio(request):
 
 @login_required(login_url="index")
 def admin_mapa(request):
-    event = _active_event_with_membership(request.user)
+    event, _snapshot = _active_event_with_membership(request.user)
     assignment_rows = []
     if event:
         assignment_rows = list(
-            StallAssignment.objects.select_related("stall", "vendor_user", "spot", "spot__zone")
+            StallLocationAssignment.objects.select_related("stall", "spot", "spot__zone")
             .filter(event=event)
             .order_by("stall__name")
         )
@@ -1382,25 +1732,45 @@ def admin_mapa(request):
 
 @login_required(login_url="index")
 def mi_cuenta(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     return render(request, "core/mi_cuenta.html")
 
 
 @login_required(login_url="index")
 def mi_cuenta_tarjetas(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     return render(request, "core/mi_cuenta_tarjetas.html")
 
 
 @login_required(login_url="index")
 def mi_cuenta_tarjeta_editar(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     return render(request, "core/mi_cuenta_tarjeta_editar.html")
 
 
 @login_required(login_url="index")
 def mi_cuenta_resumen(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     return render(request, "core/mi_cuenta_resumen.html")
 
 
 @login_required(login_url="index")
 def cliente_web_app(request):
+    _event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     saldo_actual = _wallet_for(request.user).balance
     return render(request, "core/cliente_web_app.html", {"saldo_actual": saldo_actual})

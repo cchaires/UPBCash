@@ -5,12 +5,14 @@ from django.utils import timezone
 
 from .models import CampaignStatus, EventCampaign, EventMembership, EventUserGroup, ProfileType
 
+PROFILE_GROUP_NAMES = ("cliente", "vendedor", "staff")
+
 
 class EventClosedError(ValidationError):
     pass
 
 
-def get_active_event(*, for_update=False):
+def get_active_campaign(*, for_update=False):
     queryset = EventCampaign.objects.filter(status=CampaignStatus.ACTIVE).order_by("-starts_at", "-id")
     if for_update:
         queryset = queryset.select_for_update()
@@ -18,6 +20,45 @@ def get_active_event(*, for_update=False):
     if current_event:
         return current_event
     return queryset.first()
+
+
+def get_active_event(*, for_update=False):
+    return get_active_campaign(for_update=for_update)
+
+
+def is_campaign_open(event):
+    if not event:
+        return False
+    now = timezone.now()
+    return event.status == CampaignStatus.ACTIVE and event.starts_at <= now <= event.ends_at
+
+
+def is_public_event_open(event):
+    if not event:
+        return False
+    now = timezone.now()
+    public_starts = event.public_starts_at or event.starts_at
+    public_ends = event.public_ends_at or event.ends_at
+    return event.status == CampaignStatus.ACTIVE and public_starts <= now <= public_ends
+
+
+def validate_campaign_windows(
+    *,
+    starts_at,
+    ends_at,
+    public_starts_at=None,
+    public_ends_at=None,
+):
+    if starts_at >= ends_at:
+        raise ValidationError("La ventana de campaña debe terminar despues de iniciar.")
+
+    resolved_public_starts = public_starts_at or starts_at
+    resolved_public_ends = public_ends_at or ends_at
+    if resolved_public_starts >= resolved_public_ends:
+        raise ValidationError("La ventana publica debe terminar despues de iniciar.")
+    if resolved_public_starts < starts_at or resolved_public_ends > ends_at:
+        raise ValidationError("La ventana publica debe quedar contenida dentro de la campaña.")
+    return resolved_public_starts, resolved_public_ends
 
 
 def assert_event_writable(event):
@@ -42,7 +83,7 @@ def ensure_user_client_membership(
     invited_by_email="",
     invited_by_matricula="",
 ):
-    target_event = event or get_active_event(for_update=True)
+    target_event = event or get_active_campaign(for_update=True)
     if not target_event:
         return None
 
@@ -88,6 +129,45 @@ def ensure_user_client_membership(
 
 def user_has_group(*, event, user, group_name):
     return EventUserGroup.objects.filter(event=event, user=user, group__name=group_name).exists()
+
+
+def get_event_profiles(*, user, event):
+    if not event or not user or not user.is_authenticated:
+        return set()
+    return set(
+        EventUserGroup.objects.filter(
+            event=event,
+            user=user,
+            group__name__in=PROFILE_GROUP_NAMES,
+        ).values_list("group__name", flat=True)
+    )
+
+
+def _fallback_profiles_without_active_event(*, user):
+    if EventUserGroup.objects.filter(user=user, group__name="staff").exists():
+        return {"staff"}
+    return set()
+
+
+def sync_auth_profile_groups_for_event(*, user, event):
+    if not user or not user.is_authenticated:
+        return set()
+
+    for group_name in PROFILE_GROUP_NAMES:
+        ensure_group(group_name)
+
+    desired_group_names = get_event_profiles(user=user, event=event) if event else _fallback_profiles_without_active_event(user=user)
+    current_group_names = set(user.groups.filter(name__in=PROFILE_GROUP_NAMES).values_list("name", flat=True))
+
+    to_add = desired_group_names - current_group_names
+    to_remove = current_group_names - desired_group_names
+
+    if to_add:
+        user.groups.add(*Group.objects.filter(name__in=to_add))
+    if to_remove:
+        user.groups.remove(*Group.objects.filter(name__in=to_remove))
+
+    return desired_group_names
 
 
 @transaction.atomic

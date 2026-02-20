@@ -1,11 +1,25 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.models import Group
 from django.db import transaction
 
 from accounting.services import WalletService
-from events.services import assert_event_writable, assign_group_to_user, remove_group_from_user, user_has_group
-from stalls.models import MapSpotStatus, StallAssignment
+from events.services import (
+    PROFILE_GROUP_NAMES,
+    assert_event_writable,
+    assign_group_to_user,
+    remove_group_from_user,
+    user_has_group,
+)
+from stalls.models import (
+    MapSpot,
+    MapSpotStatus,
+    MapZone,
+    Stall,
+    StallLocationAssignment,
+    StallVendorMembership,
+    StallVendorRole,
+)
 
 from .models import StaffAuditLog
 
@@ -16,7 +30,8 @@ class StaffPermissionError(PermissionError):
 
 class StaffOpsService:
     BLOCKED_GROUP_NAMES = {"admin", "administrador", "superuser"}
-    DEFAULT_MANAGEABLE_GROUP_NAMES = {"cliente", "staff", "vendedor"}
+    DEFAULT_MANAGEABLE_GROUP_NAMES = PROFILE_GROUP_NAMES
+    MAX_VENDORS_PER_STALL = 3
 
     @classmethod
     def _assert_staff(cls, *, event, user):
@@ -43,11 +58,10 @@ class StaffOpsService:
 
     @classmethod
     def list_manageable_group_names(cls, *, event):
-        for group_name in cls.DEFAULT_MANAGEABLE_GROUP_NAMES:
+        del event
+        for group_name in PROFILE_GROUP_NAMES:
             Group.objects.get_or_create(name=group_name)
-
-        queryset = Group.objects.exclude(name__in=cls.BLOCKED_GROUP_NAMES).order_by("name")
-        return [group.name for group in queryset]
+        return list(PROFILE_GROUP_NAMES)
 
     @classmethod
     @transaction.atomic
@@ -153,43 +167,268 @@ class StaffOpsService:
         return removed
 
     @classmethod
+    def get_vendor_membership(cls, *, event, user):
+        return (
+            StallVendorMembership.objects.select_related("stall")
+            .filter(event=event, vendor_user=user)
+            .order_by("id")
+            .first()
+        )
+
+    @classmethod
+    def get_stall_location(cls, *, event, stall):
+        return (
+            StallLocationAssignment.objects.select_related("spot", "spot__zone")
+            .filter(event=event, stall=stall)
+            .order_by("-assigned_at", "-id")
+            .first()
+        )
+
+    @classmethod
+    def get_stall_memberships(cls, *, event, stall):
+        return StallVendorMembership.objects.select_related("vendor_user").filter(event=event, stall=stall).order_by("id")
+
+    @classmethod
+    def _normalize_coordinate(cls, *, raw_value, coord_name):
+        try:
+            value = Decimal(str(raw_value))
+        except (InvalidOperation, TypeError, ValueError):
+            raise ValueError(f"La coordenada {coord_name} es invalida.")  # noqa: B904
+        if value < 0 or value > 1:
+            raise ValueError(f"La coordenada {coord_name} debe estar entre 0 y 1.")
+        return value.quantize(Decimal("0.001"))
+
+    @classmethod
+    def _get_default_zone(cls, *, event):
+        zone, _ = MapZone.objects.get_or_create(
+            event=event,
+            name="General",
+            defaults={"sort_order": 0},
+        )
+        return zone
+
+    @classmethod
+    def _next_spot_label(cls, *, event):
+        max_suffix = 0
+        for label in MapSpot.objects.filter(event=event, label__startswith="S-").values_list("label", flat=True):
+            suffix = label.split("-", 1)[-1]
+            if suffix.isdigit():
+                max_suffix = max(max_suffix, int(suffix))
+        return f"S-{max_suffix + 1:02d}"
+
+    @classmethod
     @transaction.atomic
-    def assign_vendor(cls, *, event, staff_user, vendor_user, stall, spot):
+    def create_map_spot(cls, *, event, staff_user, x, y):
+        assert_event_writable(event)
+        cls._assert_staff(event=event, user=staff_user)
+
+        current_count = MapSpot.objects.filter(event=event).count()
+        if event.max_map_spots and current_count >= event.max_map_spots:
+            raise ValueError("No puedes crear mas espacios que el maximo configurado para el evento.")
+
+        spot = MapSpot.objects.create(
+            event=event,
+            zone=cls._get_default_zone(event=event),
+            label=cls._next_spot_label(event=event),
+            x=cls._normalize_coordinate(raw_value=x, coord_name="x"),
+            y=cls._normalize_coordinate(raw_value=y, coord_name="y"),
+            status=MapSpotStatus.AVAILABLE,
+        )
+        cls._log_action(
+            event=event,
+            staff_user=staff_user,
+            action_type="create_map_spot",
+            target_model="stalls.MapSpot",
+            target_id=spot.id,
+            payload={"label": spot.label, "x": str(spot.x), "y": str(spot.y)},
+        )
+        return spot
+
+    @classmethod
+    @transaction.atomic
+    def update_map_spot(cls, *, event, staff_user, spot, x=None, y=None):
+        assert_event_writable(event)
+        cls._assert_staff(event=event, user=staff_user)
+        if spot.event_id != event.id:
+            raise ValueError("El espacio debe pertenecer al evento.")
+
+        fields_to_update = []
+        if x is not None:
+            spot.x = cls._normalize_coordinate(raw_value=x, coord_name="x")
+            fields_to_update.append("x")
+        if y is not None:
+            spot.y = cls._normalize_coordinate(raw_value=y, coord_name="y")
+            fields_to_update.append("y")
+        if fields_to_update:
+            spot.save(update_fields=fields_to_update)
+            cls._log_action(
+                event=event,
+                staff_user=staff_user,
+                action_type="update_map_spot",
+                target_model="stalls.MapSpot",
+                target_id=spot.id,
+                payload={"x": str(spot.x), "y": str(spot.y)},
+            )
+        return spot
+
+    @classmethod
+    @transaction.atomic
+    def delete_map_spot(cls, *, event, staff_user, spot):
+        assert_event_writable(event)
+        cls._assert_staff(event=event, user=staff_user)
+        if spot.event_id != event.id:
+            raise ValueError("El espacio debe pertenecer al evento.")
+        if StallLocationAssignment.objects.filter(event=event, spot=spot).exists():
+            raise ValueError("No puedes eliminar un espacio asignado a una tienda.")
+        spot_id = spot.id
+        label = spot.label
+        spot.delete()
+        cls._log_action(
+            event=event,
+            staff_user=staff_user,
+            action_type="delete_map_spot",
+            target_model="stalls.MapSpot",
+            target_id=spot_id,
+            payload={"label": label},
+        )
+
+    @classmethod
+    @transaction.atomic
+    def create_vendor_stall(
+        cls,
+        *,
+        event,
+        vendor_user,
+        name,
+        code="",
+        description="",
+        image=None,
+    ):
+        assert_event_writable(event)
+        existing_membership = cls.get_vendor_membership(event=event, user=vendor_user)
+        if existing_membership:
+            raise ValueError("El vendedor ya pertenece a una tienda en este evento.")
+        if not name or not name.strip():
+            raise ValueError("El nombre de la tienda es obligatorio.")
+
+        suggested_code = (code or f"stall-u{vendor_user.id}").strip().lower().replace(" ", "-")[:32]
+        base_code = suggested_code or f"stall-u{vendor_user.id}"
+        candidate = base_code
+        suffix = 1
+        while Stall.objects.filter(event=event, code=candidate).exists():
+            suffix += 1
+            candidate = f"{base_code[:24]}-{suffix}"[:32]
+
+        stall = Stall.objects.create(
+            event=event,
+            code=candidate,
+            name=name.strip(),
+            description=description.strip(),
+            status="open",
+            image=image,
+        )
+        membership = StallVendorMembership.objects.create(
+            event=event,
+            stall=stall,
+            vendor_user=vendor_user,
+            role=StallVendorRole.OWNER,
+            assigned_by_staff=None,
+        )
+        assign_group_to_user(event=event, user=vendor_user, group_name="vendedor")
+        return stall, membership
+
+    @classmethod
+    @transaction.atomic
+    def add_vendor_to_stall(
+        cls,
+        *,
+        event,
+        staff_user,
+        stall,
+        vendor_user,
+        role=StallVendorRole.MEMBER,
+    ):
+        assert_event_writable(event)
+        cls._assert_staff(event=event, user=staff_user)
+        if stall.event_id != event.id:
+            raise ValueError("La tienda debe pertenecer al evento.")
+
+        vendor_membership = cls.get_vendor_membership(event=event, user=vendor_user)
+        if vendor_membership and vendor_membership.stall_id != stall.id:
+            raise ValueError("El vendedor ya pertenece a otra tienda en este evento.")
+        if vendor_membership and vendor_membership.stall_id == stall.id:
+            return vendor_membership, False
+
+        current_count = StallVendorMembership.objects.filter(event=event, stall=stall).count()
+        if current_count >= cls.MAX_VENDORS_PER_STALL:
+            raise ValueError("La tienda ya tiene el maximo de 3 vendedores.")
+
+        membership = StallVendorMembership.objects.create(
+            event=event,
+            stall=stall,
+            vendor_user=vendor_user,
+            role=role,
+            assigned_by_staff=staff_user,
+        )
+        assign_group_to_user(event=event, user=vendor_user, group_name="vendedor")
+        cls._log_action(
+            event=event,
+            staff_user=staff_user,
+            action_type="add_vendor_to_stall",
+            target_model="stalls.StallVendorMembership",
+            target_id=membership.id,
+            payload={
+                "stall_id": stall.id,
+                "vendor_user_id": vendor_user.id,
+                "role": role,
+            },
+        )
+        return membership, True
+
+    @classmethod
+    @transaction.atomic
+    def assign_spot_to_stall(cls, *, event, staff_user, stall, spot):
         assert_event_writable(event)
         cls._assert_staff(event=event, user=staff_user)
         if stall.event_id != event.id or spot.event_id != event.id:
-            raise ValueError("Puesto y espacio deben pertenecer al evento.")
+            raise ValueError("Tienda y espacio deben pertenecer al evento.")
+        if spot.status == MapSpotStatus.BLOCKED:
+            raise ValueError("No puedes asignar un espacio bloqueado.")
+        taken_by_other = StallLocationAssignment.objects.filter(event=event, spot=spot).exclude(stall=stall).exists()
+        if taken_by_other:
+            raise ValueError("El espacio ya esta asignado a otra tienda.")
 
-        assign_group_to_user(event=event, user=vendor_user, group_name="vendedor")
-        assignment, created = StallAssignment.objects.get_or_create(
+        previous_assignment = StallLocationAssignment.objects.filter(event=event, stall=stall).first()
+        if previous_assignment and previous_assignment.spot_id == spot.id:
+            return previous_assignment
+
+        assignment, created = StallLocationAssignment.objects.get_or_create(
             event=event,
-            vendor_user=vendor_user,
+            stall=stall,
             defaults={
-                "stall": stall,
                 "spot": spot,
                 "assigned_by_staff": staff_user,
             },
         )
         if not created:
-            previous_spot = assignment.spot
-            assignment.stall = stall
+            previous_spot = previous_assignment.spot if previous_assignment else assignment.spot
             assignment.spot = spot
             assignment.assigned_by_staff = staff_user
-            assignment.save(update_fields=["stall", "spot", "assigned_by_staff"])
-            if previous_spot_id := getattr(previous_spot, "id", None):
-                if previous_spot_id != spot.id:
-                    previous_spot.status = MapSpotStatus.AVAILABLE
-                    previous_spot.save(update_fields=["status"])
-        spot.status = MapSpotStatus.ASSIGNED
-        spot.save(update_fields=["status"])
+            assignment.save(update_fields=["spot", "assigned_by_staff"])
+            if previous_spot and previous_spot.id != spot.id:
+                previous_spot.status = MapSpotStatus.AVAILABLE
+                previous_spot.save(update_fields=["status"])
+
+        if spot.status != MapSpotStatus.ASSIGNED:
+            spot.status = MapSpotStatus.ASSIGNED
+            spot.save(update_fields=["status"])
         cls._log_action(
             event=event,
             staff_user=staff_user,
-            action_type="assign_vendor",
-            target_model="stalls.StallAssignment",
+            action_type="assign_spot_to_stall",
+            target_model="stalls.StallLocationAssignment",
             target_id=assignment.id,
             payload={
-                "vendor_user_id": vendor_user.id,
                 "stall_id": stall.id,
                 "spot_id": spot.id,
             },
@@ -198,33 +437,26 @@ class StaffOpsService:
 
     @classmethod
     @transaction.atomic
-    def assign_spot(cls, *, event, staff_user, stall, spot):
-        assert_event_writable(event)
-        cls._assert_staff(event=event, user=staff_user)
-        if stall.event_id != event.id or spot.event_id != event.id:
-            raise ValueError("Puesto y espacio deben pertenecer al evento.")
-
-        assignment = StallAssignment.objects.filter(event=event, stall=stall).select_for_update().first()
-        if not assignment:
-            raise ValueError("No existe asignacion de vendedor para el puesto.")
-        previous_spot = assignment.spot
-        assignment.spot = spot
-        assignment.assigned_by_staff = staff_user
-        assignment.save(update_fields=["spot", "assigned_by_staff"])
-        if previous_spot.id != spot.id:
-            previous_spot.status = MapSpotStatus.AVAILABLE
-            previous_spot.save(update_fields=["status"])
-        spot.status = MapSpotStatus.ASSIGNED
-        spot.save(update_fields=["status"])
-        cls._log_action(
+    def assign_vendor(cls, *, event, staff_user, vendor_user, stall, spot):
+        membership, _created = cls.add_vendor_to_stall(
             event=event,
             staff_user=staff_user,
-            action_type="assign_spot",
-            target_model="stalls.StallAssignment",
-            target_id=assignment.id,
-            payload={"stall_id": stall.id, "spot_id": spot.id},
+            stall=stall,
+            vendor_user=vendor_user,
+            role=StallVendorRole.MEMBER,
         )
-        return assignment
+        assignment = cls.assign_spot_to_stall(
+            event=event,
+            staff_user=staff_user,
+            stall=stall,
+            spot=spot,
+        )
+        return assignment, membership
+
+    @classmethod
+    @transaction.atomic
+    def assign_spot(cls, *, event, staff_user, stall, spot):
+        return cls.assign_spot_to_stall(event=event, staff_user=staff_user, stall=stall, spot=spot)
 
     @classmethod
     @transaction.atomic

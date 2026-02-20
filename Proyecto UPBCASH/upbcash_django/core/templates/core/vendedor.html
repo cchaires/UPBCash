@@ -19,6 +19,9 @@
           <a class="nav__item nav__item--active" href="{% url 'vendedor' %}">
             <span class="nav__icon">🏠</span><span>Inicio</span>
           </a>
+          <a class="nav__item" href="{% url 'vendedor_tienda' %}">
+            <span class="nav__icon">🏪</span><span>Tienda</span>
+          </a>
           <a class="nav__item" href="{% url 'vendedor_productos' %}">
             <span class="nav__icon">🍽️</span><span>Productos</span>
           </a>
@@ -65,12 +68,32 @@
             </div>
             <div class="status-pill">
               {% if assignment %}
-              Puesto: {{ assignment.stall.name }}
+              Tienda: {{ assignment.stall.name }}
               {% else %}
-              Sin puesto asignado
+              Sin tienda creada
               {% endif %}
             </div>
           </header>
+
+          {% if assignment %}
+          <section class="panel" style="margin-bottom: 16px;">
+            <div class="panel__title">
+              <h2>Imagen de tienda</h2>
+            </div>
+            {% if stall_image_url %}
+            <img src="{{ stall_image_url }}" alt="Imagen de {{ assignment.stall.name }}" style="max-width: 260px; border-radius: 10px;" />
+            {% else %}
+            <p class="item__desc">Aun no has cargado una imagen de tienda. Puedes hacerlo en la seccion Productos.</p>
+            {% endif %}
+          </section>
+          {% endif %}
+
+          {% if not assignment %}
+          <section class="panel" style="margin-bottom: 16px;">
+            <p class="item__desc">Crea tu tienda para empezar a gestionar productos durante la campaña.</p>
+            <a class="btn btn--secondary" href="{% url 'vendedor_tienda' %}">Crear tienda</a>
+          </section>
+          {% endif %}
 
           <section class="panel">
             <div class="panel__title">

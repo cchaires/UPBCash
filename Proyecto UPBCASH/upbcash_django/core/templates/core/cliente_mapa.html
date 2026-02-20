@@ -59,9 +59,14 @@
         <div class="main__inner main__inner--scroll">
           <section class="card">
             <h1 class="page-title">Mapa UPBC</h1>
-            <p class="page-subtitle">Ubicacion general del evento.</p>
-            <div class="map-card">
-              <img class="map-image" src="{% static 'core/img/mapa_upbc.png' %}" alt="Mapa UPBC" />
+            <p class="page-subtitle">Ubicacion de tiendas visibles para {{ event.name }}.</p>
+            <div class="map-card" style="position:relative; overflow:hidden;">
+              <img class="map-image" src="{{ map_image_url }}" alt="Mapa UPBC" />
+              {% for spot in map_spots %}
+              <div style="position:absolute; left:{{ spot.x_percent }}%; top:{{ spot.y_percent }}%; transform:translate(-50%, -50%); background:#0f766e; color:#fff; border-radius:999px; padding:4px 8px; font-size:12px;">
+                {{ spot.label }} · {{ spot.stall_name }}
+              </div>
+              {% endfor %}
             </div>
           </section>
         </div>

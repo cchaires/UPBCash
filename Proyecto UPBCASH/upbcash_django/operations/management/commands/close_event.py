@@ -27,6 +27,8 @@ class Command(BaseCommand):
             WalletService.expire_remaining_balance(event=event, user=cache.user)
 
         event.status = CampaignStatus.CLOSED
-        event.ends_at = min(event.ends_at, timezone.now())
-        event.save(update_fields=["status", "ends_at"])
+        now = timezone.now()
+        event.ends_at = min(event.ends_at, now)
+        event.public_ends_at = min(event.public_ends_at or now, now)
+        event.save(update_fields=["status", "ends_at", "public_ends_at"])
         self.stdout.write(self.style.SUCCESS(f"Evento {event.code} cerrado correctamente."))

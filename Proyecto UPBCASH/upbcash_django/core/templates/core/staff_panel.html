@@ -20,6 +20,12 @@
           <a class="nav__item nav__item--active" href="{% url 'staff_panel' %}">
             <span class="nav__icon">🛠️</span><span>Staff</span>
           </a>
+          <a class="nav__item" href="{% url 'staff_eventos' %}">
+            <span class="nav__icon">📅</span><span>Eventos</span>
+          </a>
+          <a class="nav__item" href="{% url 'staff_mapa_asignacion' %}">
+            <span class="nav__icon">🗺️</span><span>Mapa asignacion</span>
+          </a>
           <a class="nav__item" href="{% url 'cliente' %}">
             <span class="nav__icon">🏠</span><span>Cliente</span>
           </a>
@@ -65,10 +71,16 @@
           <header class="main__header">
             <div>
               <h1 class="page-title">Panel staff</h1>
-              <p class="page-subtitle">Permisos, asignaciones y auditoria del evento activo.</p>
+              <p class="page-subtitle">Permisos por perfil y auditoria del evento activo.</p>
             </div>
-            <div class="status-pill">Evento: {{ event.code }}</div>
+            <div class="status-pill">Evento: {% if event %}{{ event.code }}{% else %}Sin evento activo{% endif %}</div>
           </header>
+
+          {% if not event %}
+          <section class="card" style="margin-top: 14px;">
+            <p class="helper" style="margin: 0;">No hay evento activo. Puedes consultar el panel, pero las acciones operativas estan bloqueadas hasta abrir un nuevo evento.</p>
+          </section>
+          {% endif %}
 
           <section class="card staff-grid-summary">
             <article class="menu-item">
@@ -138,10 +150,15 @@
                       {% endfor %}
                     </td>
                     <td>
-                      {% if row.assignment %}
-                      <div class="item__desc">{{ row.assignment.stall.name }} · {{ row.assignment.spot.label }}</div>
+                      {% if row.vendor_membership %}
+                      <div class="item__desc">{{ row.vendor_membership.stall.name }}</div>
+                      {% if row.location_assignment %}
+                      <div class="item__desc">Espacio {{ row.location_assignment.spot.label }}</div>
                       {% else %}
-                      <div class="item__desc">Sin asignacion</div>
+                      <div class="item__desc">Sin espacio en mapa</div>
+                      {% endif %}
+                      {% else %}
+                      <div class="item__desc">Sin tienda asignada</div>
                       {% endif %}
                     </td>
                     <td>
@@ -186,66 +203,26 @@
           </section>
 
           <section class="card" style="margin-top: 14px;">
-            <h2 class="page-title staff-section-title">Asignar vendedor a puesto y espacio</h2>
-            <form class="form staff-assignment-form" method="post" action="{% url 'staff_panel' %}">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="assign_vendor" />
-              <input type="hidden" name="next_query" value="{{ current_query_string }}" />
-              <div class="field">
-                <label for="vendor_user_id">Usuario vendedor</label>
-                <select class="input" id="vendor_user_id" name="vendor_user_id" required>
-                  <option value="">Selecciona usuario</option>
-                  {% for membership in assignment_candidates %}
-                  <option value="{{ membership.user_id }}">{{ membership.user.username }}{% if membership.matricula %} ({{ membership.matricula }}){% endif %}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label for="stall_id">Puesto</label>
-                <select class="input" id="stall_id" name="stall_id" required>
-                  <option value="">Selecciona puesto</option>
-                  {% for stall in stalls %}
-                  <option value="{{ stall.id }}">{{ stall.name }} ({{ stall.code }})</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label for="spot_id">Espacio</label>
-                <select class="input" id="spot_id" name="spot_id" required>
-                  <option value="">Selecciona espacio</option>
-                  {% for row in spot_rows %}
-                  <option value="{{ row.spot.id }}" {% if row.is_taken %}disabled{% endif %}>
-                    {{ row.spot.label }} - {{ row.spot.zone.name }}{% if row.is_taken %} (ocupado por {{ row.taken_by }}){% endif %}
-                  </option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="actions-row">
-                <button class="btn btn--secondary" type="submit">Guardar asignacion</button>
-              </div>
-            </form>
-          </section>
-
-          <section class="card" style="margin-top: 14px;">
-            <h2 class="page-title staff-section-title">Asignaciones actuales</h2>
+            <h2 class="page-title staff-section-title">Operaciones visuales</h2>
             <div class="list">
-              {% for assignment in assignments %}
               <article class="list-item">
                 <div>
-                  <div class="list-item__title">{{ assignment.stall.name }} ({{ assignment.stall.code }})</div>
-                  <div class="list-item__meta">{{ assignment.vendor_user.username }} · {{ assignment.spot.label }} · {{ assignment.spot.zone.name }}</div>
+                  <div class="list-item__title">Campañas y evento publico</div>
+                  <div class="list-item__meta">Configura fechas de campaña, ventana publica y maximo de espacios.</div>
                 </div>
-                <div class="list-item__price">{{ assignment.assigned_at|date:"d/m H:i" }}</div>
+                <a class="btn btn--secondary" href="{% url 'staff_eventos' %}">Abrir eventos</a>
               </article>
-              {% empty %}
               <article class="list-item">
                 <div>
-                  <div class="list-item__title">Sin asignaciones</div>
-                  <div class="list-item__meta">Aun no se han asignado vendedores a puestos.</div>
+                  <div class="list-item__title">Mapa de asignacion</div>
+                  <div class="list-item__meta">Gestiona spots por click y asigna tiendas/vendedores visualmente.</div>
                 </div>
-                <div class="list-item__price">-</div>
+                {% if can_manage_assignments and event %}
+                <a class="btn btn--secondary" href="{% url 'staff_mapa_asignacion' %}">Abrir mapa</a>
+                {% else %}
+                <span class="item__desc">No disponible</span>
+                {% endif %}
               </article>
-              {% endfor %}
             </div>
           </section>
 

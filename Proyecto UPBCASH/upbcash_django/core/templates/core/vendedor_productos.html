@@ -19,6 +19,9 @@
           <a class="nav__item" href="{% url 'vendedor' %}">
             <span class="nav__icon">🏠</span><span>Inicio</span>
           </a>
+          <a class="nav__item" href="{% url 'vendedor_tienda' %}">
+            <span class="nav__icon">🏪</span><span>Tienda</span>
+          </a>
           <a class="nav__item nav__item--active" href="{% url 'vendedor_productos' %}">
             <span class="nav__icon">🍽️</span><span>Productos</span>
           </a>
@@ -60,7 +63,7 @@
               {% if assignment %}
               <p>Catalogo activo para {{ assignment.stall.name }}.</p>
               {% else %}
-              <p>Aun no tienes un puesto asignado en el evento activo.</p>
+              <p>Aun no tienes una tienda creada en el evento activo.</p>
               {% endif %}
             </div>
             <div class="status-pill">
@@ -69,6 +72,33 @@
           </header>
 
           <section class="panel">
+            <div class="panel__title">
+              <h2>Imagen de tienda</h2>
+            </div>
+            {% if assignment %}
+            <form method="post" action="{% url 'vendedor_productos' %}" enctype="multipart/form-data" class="form form--wide">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="update_stall_image" />
+              <div class="field">
+                <label for="stall_image">Imagen principal de la tienda</label>
+                <input class="input" id="stall_image" name="stall_image" type="file" accept="image/*" />
+                {% if stall_image_url %}
+                <div style="margin-top: 8px;">
+                  <img src="{{ stall_image_url }}" alt="Imagen de la tienda" style="max-width: 220px; border-radius: 10px;" />
+                </div>
+                <label class="inline-check"><input type="checkbox" name="remove_stall_image" /> Quitar imagen actual</label>
+                {% endif %}
+              </div>
+              <div class="actions-row">
+                <button class="btn btn--secondary" type="submit">Guardar imagen de tienda</button>
+              </div>
+            </form>
+            {% else %}
+            <p class="item__desc">Necesitas crear tu tienda para gestionar su imagen.</p>
+            {% endif %}
+          </section>
+
+          <section class="panel" style="margin-top: 16px;">
             <div class="panel__title">
               <h2>{% if form_product %}Editar producto{% else %}Agregar nuevo producto{% endif %}</h2>
             </div>
@@ -159,7 +189,8 @@
               </div>
             </form>
             {% else %}
-            <p class="item__desc">Solicita a staff la asignacion de un puesto para habilitar el catalogo.</p>
+            <p class="item__desc">Primero crea tu tienda para habilitar el catalogo de productos.</p>
+            <a class="btn btn--secondary" href="{% url 'vendedor_tienda' %}">Crear tienda</a>
             {% endif %}
           </section>
 
@@ -178,6 +209,14 @@
                 <div class="item__desc">Precio: ${{ product.price|floatformat:2 }} · Costo: ${{ product.cost|floatformat:2 }} · Stock: {{ product.stock_text }}</div>
                 <div class="item__price"><span>{{ product.availability_label }}</span><span class="item__badge">{{ product.badge_label }}</span></div>
                 <a class="btn btn--secondary btn--sm" href="{% url 'vendedor_productos' %}?edit={{ product.id }}">Editar</a>
+                {% if product.is_active %}
+                <form method="post" action="{% url 'vendedor_productos' %}" style="margin-top: 8px;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete_product" />
+                  <input type="hidden" name="product_id" value="{{ product.id }}" />
+                  <button class="btn btn--secondary btn--sm" type="submit">Desactivar</button>
+                </form>
+                {% endif %}
               </article>
               {% empty %}
               <article class="menu-item">

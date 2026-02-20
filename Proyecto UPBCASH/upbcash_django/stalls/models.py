@@ -71,12 +71,19 @@ class MapSpot(models.Model):
     def __str__(self):
         return f"{self.event.code} - {self.label}"
 
+    def clean(self):
+        if self.x is not None and (self.x < 0 or self.x > 1):
+            raise ValidationError({"x": "La coordenada x debe estar normalizada entre 0 y 1."})
+        if self.y is not None and (self.y < 0 or self.y > 1):
+            raise ValidationError({"y": "La coordenada y debe estar normalizada entre 0 y 1."})
+
 
 class Stall(models.Model):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stalls")
     code = models.CharField(max_length=32)
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True)
+    image = models.FileField(upload_to="stalls/", null=True, blank=True)
     status = models.CharField(max_length=16, choices=StallStatus.choices, default=StallStatus.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -119,6 +126,72 @@ class StallAssignment(models.Model):
 
     def __str__(self):
         return f"{self.event.code} - {self.vendor_user.username} -> {self.stall.code}"
+
+
+class StallVendorRole(models.TextChoices):
+    OWNER = "owner", "Propietario"
+    MEMBER = "member", "Miembro"
+
+
+class StallVendorMembership(models.Model):
+    event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stall_vendor_memberships")
+    stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name="vendor_memberships")
+    vendor_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="stall_vendor_memberships",
+    )
+    role = models.CharField(max_length=16, choices=StallVendorRole.choices, default=StallVendorRole.MEMBER)
+    assigned_by_staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_vendor_memberships_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["stall__name", "vendor_user__username", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["event", "vendor_user"], name="uniq_vendor_membership_per_event"),
+            models.UniqueConstraint(fields=["event", "stall", "vendor_user"], name="uniq_vendor_membership_by_stall"),
+        ]
+        indexes = [
+            models.Index(fields=["event", "stall"]),
+            models.Index(fields=["event", "vendor_user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.event.code} - {self.stall.code} - {self.vendor_user.username}"
+
+
+class StallLocationAssignment(models.Model):
+    event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stall_location_assignments")
+    stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name="location_assignments")
+    spot = models.ForeignKey(MapSpot, on_delete=models.PROTECT, related_name="stall_location_assignments")
+    assigned_by_staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_spot_assignments_created",
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-assigned_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(fields=["event", "stall"], name="uniq_location_assignment_by_stall_event"),
+            models.UniqueConstraint(fields=["event", "spot"], name="uniq_location_assignment_by_spot_event"),
+        ]
+        indexes = [
+            models.Index(fields=["event", "stall"]),
+            models.Index(fields=["event", "spot"]),
+        ]
+
+    def __str__(self):
+        return f"{self.event.code} - {self.stall.code} @ {self.spot.label}"
 
 
 class ProductCategory(models.Model):
