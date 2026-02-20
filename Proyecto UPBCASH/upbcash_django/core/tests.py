@@ -732,3 +732,75 @@ class ApiPermissionTests(TestCase):
         self.client.login(username="api-client", password="secret")
         response = self.client.post(reverse("api_verify_order_qr", args=[999999]))
         self.assertEqual(response.status_code, 403)
+
+
+class VisualSystemTemplateTests(TestCase):
+    def setUp(self):
+        self.user_model = get_user_model()
+        self.event = EventCampaign.objects.create(
+            code="ui-2026",
+            name="Evento UI",
+            starts_at=timezone.now() - timezone.timedelta(days=1),
+            ends_at=timezone.now() + timezone.timedelta(days=1),
+            timezone="America/Mexico_City",
+            status=CampaignStatus.ACTIVE,
+        )
+        self.client_user = self.user_model.objects.create_user(username="ui-client", password="secret")
+        self.vendor_user = self.user_model.objects.create_user(username="ui-vendor", password="secret")
+        self.staff_user = self.user_model.objects.create_user(username="ui-staff", password="secret")
+
+        for user in [self.client_user, self.vendor_user, self.staff_user]:
+            EventMembership.objects.update_or_create(
+                event=self.event,
+                user=user,
+                defaults={"profile_type": "comunidad", "matricula": f"UI-{user.id}"},
+            )
+
+        assign_group_to_user(event=self.event, user=self.client_user, group_name="cliente")
+        assign_group_to_user(event=self.event, user=self.vendor_user, group_name="vendedor")
+        assign_group_to_user(event=self.event, user=self.staff_user, group_name="staff")
+
+    def test_auth_pages_use_shared_auth_layout(self):
+        response = self.client.get(reverse("index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "auth-card")
+        self.assertContains(response, "btn btn--primary")
+
+    def test_cliente_shell_renders_shared_components(self):
+        self.client.login(username="ui-client", password="secret")
+        response = self.client.get(reverse("cliente"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "app-shell")
+        self.assertContains(response, "userToggle")
+        self.assertContains(response, "nav__icon")
+
+    def test_vendor_shell_renders_shared_components(self):
+        self.client.login(username="ui-vendor", password="secret")
+        response = self.client.get(reverse("vendedor"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "app-shell")
+        self.assertContains(response, "nav__icon")
+
+    def test_staff_shell_renders_shared_components(self):
+        self.client.login(username="ui-staff", password="secret")
+        response = self.client.get(reverse("staff_panel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "app-shell")
+        self.assertContains(response, "staff-table")
+
+    def test_critical_templates_do_not_render_inline_style_attributes(self):
+        self.client.login(username="ui-client", password="secret")
+        client_routes = [
+            "cliente",
+            "menu_alimentos",
+            "carrito_cliente",
+            "cliente_mapa",
+            "historial_compras",
+            "historial_recargas",
+            "recarga",
+        ]
+        for route_name in client_routes:
+            with self.subTest(route=route_name):
+                response = self.client.get(reverse(route_name))
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, "style=")

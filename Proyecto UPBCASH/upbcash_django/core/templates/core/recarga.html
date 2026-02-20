@@ -1,223 +1,148 @@
+{% extends 'core/layouts/client_shell.html' %}
 {% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Recarga de saldo</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_recarga_saldo.css' %}" />
-</head>
 
-<body>
-  <div class="page">
-    <div class="app-shell">
+{% block title %}UPBCash - Recarga de saldo{% endblock %}
 
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
-
-        <nav class="nav" aria-label="Secciones del cliente">
-          <a class="nav__item" href="{% url 'cliente' %}">
-            <span class="nav__icon">🏠</span>
-            <span>Inicio</span>
-          </a>
-
-          <a class="nav__item" href="{% url 'historial_recargas' %}">
-            <span class="nav__icon">🕒</span>
-            <span>Historial recargas</span>
-          </a>
-
-          <a class="nav__item nav__item--active" href="{% url 'recarga' %}">
-            <span class="nav__icon">💳</span>
-            <span>Recarga</span>
-          </a>
-        </nav>
-
-        <div class="sidebar__spacer"></div>
-
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-
-          <div class="userbox__info">
-            <div class="userbox__name">Fernando</div>
-            <div class="userbox__sub">Cliente</div>
-          </div>
-
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menú de cuenta">
-            ▾
-          </button>
-
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
-            {% if can_view_vendor %}
-            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
-            {% endif %}
-            {% if can_view_staff %}
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            {% endif %}
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesión</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="main__inner">
-          <section class="card">
-            <header class="card__header">
-              <div>
-                <h1 class="card__title">Recargar saldo</h1>
-                <p class="card__subtitle">Simulación de compra con PayPal.</p>
-              </div>
-              <div class="saldo-pill saldo-pill--header">
-                Saldo actual: <span id="saldoValue">${{ saldo_actual|floatformat:2 }}</span>
-              </div>
-              <a class="btn btn--ghost" href="{% url 'cliente' %}">Volver</a>
-            </header>
-
-            {% if error_message %}
-            <p class="helper" style="color:#b00020; margin: 0 0 12px;">{{ error_message }}</p>
-            {% endif %}
-            {% if messages %}
-            {% for message in messages %}
-            <p class="helper" style="color:#2f8f5b; margin: 0 0 12px;">{{ message }}</p>
-            {% endfor %}
-            {% endif %}
-
-            <div class="checkout-grid">
-              <div>
-                <div class="paypal-banner">
-                  <div class="paypal-mark">
-                    <span>Pay</span><span>Pal</span>
-                  </div>
-                  <div>Pago seguro simulado</div>
-                </div>
-
-                <form class="field-grid" id="payForm" method="post" action="{% url 'recarga' %}">
-                  {% csrf_token %}
-                  <div class="field">
-                    <label for="amount">Monto a recargar</label>
-                    <input id="amount" name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 100" required />
-                  </div>
-
-                  <div class="field">
-                    <label for="name">Nombre del titular</label>
-                    <input id="name" name="holder_name" type="text" placeholder="Nombre completo" required />
-                  </div>
-
-                  <div class="field">
-                    <label for="card">Número de tarjeta</label>
-                    <input id="card" name="card" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="1234 5678 9012 3456" required />
-                  </div>
-
-                  <div class="inline">
-                    <div class="field">
-                      <label for="exp">Fecha de expiración</label>
-                      <input id="exp" name="exp" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="MM/AA" required />
-                    </div>
-                    <div class="field">
-                      <label for="cvv">CVV</label>
-                      <input id="cvv" name="cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="123" required />
-                    </div>
-                  </div>
-
-                  <div class="actions">
-                    <button class="btn btn--primary" type="submit">Comprar saldo</button>
-                  </div>
-
-                  <div class="helper">Esta compra es una simulación para el prototipo.</div>
-                </form>
-              </div>
-
-              <aside class="summary">
-                <div class="summary__title">Resumen de pago</div>
-                <div class="summary__row">
-                  <span>Monto a recargar</span>
-                  <span id="amountValue">$0.00</span>
-                </div>
-                <div class="summary__row">
-                  <span>Comisión</span>
-                  <span>$0.00</span>
-                </div>
-                <div class="summary__row summary__total">
-                  <span>Total a pagar</span>
-                  <span id="totalValue">$0.00</span>
-                </div>
-                <div class="result" id="result">Pago simulado.</div>
-              </aside>
-            </div>
-          </section>
-        </div>
-      </main>
-
+{% block content %}
+<section class="card">
+  <header class="card__header">
+    <div>
+      <h1 class="card__title">Recargar saldo</h1>
+      <p class="card__subtitle">Simulacion de compra con PayPal.</p>
     </div>
+    <div class="saldo-pill">Saldo actual: <span id="saldoValue">${{ saldo_actual|floatformat:2 }}</span></div>
+    <a class="btn btn--ghost" href="{% url 'cliente' %}">Volver</a>
+  </header>
+
+  {% if error_message %}
+  <p class="flash flash--error">{{ error_message }}</p>
+  {% endif %}
+  {% include 'core/includes/flash_messages.html' %}
+
+  <div class="checkout-grid">
+    <div>
+      <div class="status-pill mb-12">PayPal · Pago seguro simulado</div>
+
+      <form class="field-grid" id="payForm" method="post" action="{% url 'recarga' %}">
+        {% csrf_token %}
+        <div class="field">
+          <label for="amount">Monto a recargar</label>
+          <input id="amount" name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 100" required />
+        </div>
+
+        <div class="field">
+          <label for="name">Nombre del titular</label>
+          <input id="name" name="holder_name" type="text" placeholder="Nombre completo" required />
+        </div>
+
+        <div class="field">
+          <label for="card">Numero de tarjeta</label>
+          <input id="card" name="card" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="1234 5678 9012 3456" required />
+        </div>
+
+        <div class="inline">
+          <div class="field">
+            <label for="exp">Fecha de expiracion</label>
+            <input id="exp" name="exp" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="MM/AA" required />
+          </div>
+          <div class="field">
+            <label for="cvv">CVV</label>
+            <input id="cvv" name="cvv" type="password" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="123" required />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn--primary" type="submit">Comprar saldo</button>
+        </div>
+
+        <div class="helper">Esta compra es una simulacion para el prototipo.</div>
+      </form>
+    </div>
+
+    <aside class="summary">
+      <div class="summary__title">Resumen de pago</div>
+      <div class="summary__row">
+        <span>Monto a recargar</span>
+        <span id="amountValue">$0.00</span>
+      </div>
+      <div class="summary__row">
+        <span>Comision</span>
+        <span>$0.00</span>
+      </div>
+      <div class="summary__row summary__total">
+        <span>Total a pagar</span>
+        <span id="totalValue">$0.00</span>
+      </div>
+      <div class="result" id="result">Pago simulado.</div>
+    </aside>
   </div>
+</section>
+{% endblock %}
 
-  <script src="{% static 'core/js/saldo_cliente.js' %}"></script>
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-  <script>
-    setUpbcashSaldo({{ saldo_actual|floatformat:2 }});
+{% block extra_js %}
+<script src="{% static 'core/js/saldo_cliente.js' %}"></script>
+<script>
+  setUpbcashSaldo({{ saldo_actual|floatformat:2 }});
 
-    const amountInput = document.getElementById("amount");
-    const amountValue = document.getElementById("amountValue");
-    const totalValue = document.getElementById("totalValue");
-    const cardInput = document.getElementById("card");
-    const expInput = document.getElementById("exp");
-    const cvvInput = document.getElementById("cvv");
-    const form = document.getElementById("payForm");
-    const saldoEl = document.getElementById("saldoValue");
+  const amountInput = document.getElementById("amount");
+  const amountValue = document.getElementById("amountValue");
+  const totalValue = document.getElementById("totalValue");
+  const cardInput = document.getElementById("card");
+  const expInput = document.getElementById("exp");
+  const cvvInput = document.getElementById("cvv");
+  const form = document.getElementById("payForm");
+  const saldoEl = document.getElementById("saldoValue");
 
-    const updateSaldo = () => {
-      const current = getUpbcashSaldo();
-      if (saldoEl) saldoEl.textContent = formatUpbcashCurrency(current);
-    };
+  const updateSaldo = () => {
+    const current = getUpbcashSaldo();
+    if (saldoEl) saldoEl.textContent = formatUpbcashCurrency(current);
+  };
 
-    const digitsOnly = (value) => value.replace(/\D/g, "");
+  const digitsOnly = (value) => value.replace(/\D/g, "");
 
-    const formatCurrency = (value) => {
-      const number = Number(digitsOnly(String(value)));
-      if (!number || number <= 0) return "$0.00";
-      return formatUpbcashCurrency(number);
-    };
+  const formatCurrency = (value) => {
+    const number = Number(digitsOnly(String(value)));
+    if (!number || number <= 0) return "$0.00";
+    return formatUpbcashCurrency(number);
+  };
 
-    const updateSummary = () => {
-      const value = digitsOnly(amountInput.value);
-      amountInput.value = value;
-      const formatted = formatCurrency(value);
-      amountValue.textContent = formatted;
-      totalValue.textContent = formatted;
-    };
+  const updateSummary = () => {
+    const value = digitsOnly(amountInput.value);
+    amountInput.value = value;
+    const formatted = formatCurrency(value);
+    amountValue.textContent = formatted;
+    totalValue.textContent = formatted;
+  };
 
-    amountInput?.addEventListener("input", updateSummary);
+  amountInput?.addEventListener("input", updateSummary);
 
-    cardInput?.addEventListener("input", () => {
-      const digits = digitsOnly(cardInput.value).slice(0, 16);
-      const groups = digits.match(/.{1,4}/g) || [];
-      cardInput.value = groups.join(" ");
-    });
+  cardInput?.addEventListener("input", () => {
+    const digits = digitsOnly(cardInput.value).slice(0, 16);
+    const groups = digits.match(/.{1,4}/g) || [];
+    cardInput.value = groups.join(" ");
+  });
 
-    expInput?.addEventListener("input", () => {
-      const digits = digitsOnly(expInput.value).slice(0, 4);
-      const month = digits.slice(0, 2);
-      const year = digits.slice(2, 4);
-      expInput.value = year ? `${month}/${year}` : month;
-    });
+  expInput?.addEventListener("input", () => {
+    const digits = digitsOnly(expInput.value).slice(0, 4);
+    const month = digits.slice(0, 2);
+    const year = digits.slice(2, 4);
+    expInput.value = year ? `${month}/${year}` : month;
+  });
 
-    cvvInput?.addEventListener("input", () => {
-      cvvInput.value = digitsOnly(cvvInput.value).slice(0, 3);
-    });
+  cvvInput?.addEventListener("input", () => {
+    cvvInput.value = digitsOnly(cvvInput.value).slice(0, 3);
+  });
 
-    form?.addEventListener("submit", (event) => {
-      updateSummary();
-      const value = Number(digitsOnly(amountInput.value || 0));
-      amountInput.value = String(value);
-      if (value <= 0) {
-        event.preventDefault();
-      }
-    });
-
+  form?.addEventListener("submit", (event) => {
     updateSummary();
-    updateSaldo();
-  </script>
-</body>
-</html>
+    const value = Number(digitsOnly(amountInput.value || 0));
+    amountInput.value = String(value);
+    if (value <= 0) {
+      event.preventDefault();
+    }
+  });
+
+  updateSummary();
+  updateSaldo();
+</script>
+{% endblock %}

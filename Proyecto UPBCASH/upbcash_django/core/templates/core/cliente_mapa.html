@@ -1,79 +1,27 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Mapa</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
-</head>
-<body>
-  <div class="page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
+{% extends 'core/layouts/client_shell.html' %}
 
-        <nav class="nav" aria-label="Secciones del cliente">
-          <a class="nav__item" href="{% url 'cliente' %}">
-            <span class="nav__icon">🏠</span><span>Inicio</span>
-          </a>
-          <a class="nav__item nav__item--active" href="{% url 'cliente_mapa' %}">
-            <span class="nav__icon">📍</span><span>Mapa</span>
-          </a>
-          <a class="nav__item" href="{% url 'menu_alimentos' %}">
-            <span class="nav__icon">🍽️</span><span>Menu alimentos</span>
-          </a>
-          <a class="nav__item" href="{% url 'historial_compras' %}">
-            <span class="nav__icon">🕒</span><span>Historial compras</span>
-          </a>
-          <a class="nav__item" href="{% url 'recarga' %}">
-            <span class="nav__icon">💳</span><span>Recarga</span>
-          </a>
-        </nav>
+{% block title %}UPBCash - Mapa{% endblock %}
 
-        <div class="sidebar__spacer"></div>
-
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-          <div class="userbox__info">
-            <div class="userbox__name">Fernando</div>
-            <div class="userbox__sub">Cliente</div>
-          </div>
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
-            {% if can_view_vendor %}
-            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
-            {% endif %}
-            {% if can_view_staff %}
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            {% endif %}
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="main__inner main__inner--scroll">
-          <section class="card">
-            <h1 class="page-title">Mapa UPBC</h1>
-            <p class="page-subtitle">Ubicacion de tiendas visibles para {{ event.name }}.</p>
-            <div class="map-card" style="position:relative; overflow:hidden;">
-              <img class="map-image" src="{{ map_image_url }}" alt="Mapa UPBC" />
-              {% for spot in map_spots %}
-              <div style="position:absolute; left:{{ spot.x_percent }}%; top:{{ spot.y_percent }}%; transform:translate(-50%, -50%); background:#0f766e; color:#fff; border-radius:999px; padding:4px 8px; font-size:12px;">
-                {{ spot.label }} · {{ spot.stall_name }}
-              </div>
-              {% endfor %}
-            </div>
-          </section>
-        </div>
-      </main>
+{% block content %}
+<section class="card">
+  <h1 class="page-title">Mapa UPBC</h1>
+  <p class="page-subtitle">Ubicacion de tiendas visibles para {{ event.name }}.</p>
+  <div class="map-card mt-12">
+    <img class="map-image" src="{{ map_image_url }}" alt="Mapa UPBC" />
+    {% for spot in map_spots %}
+    <div class="map-spot map-spot--assigned js-map-spot" data-x="{{ spot.x_percent }}" data-y="{{ spot.y_percent }}">
+      {{ spot.label }} · {{ spot.stall_name }}
     </div>
+    {% endfor %}
   </div>
+</section>
+{% endblock %}
 
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-</body>
-</html>
+{% block extra_js %}
+<script>
+  document.querySelectorAll(".js-map-spot").forEach((spot) => {
+    spot.style.left = `${spot.dataset.x}%`;
+    spot.style.top = `${spot.dataset.y}%`;
+  });
+</script>
+{% endblock %}

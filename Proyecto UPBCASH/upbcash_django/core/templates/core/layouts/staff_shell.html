@@ -1,0 +1,35 @@
+{% extends 'core/layouts/shell_base.html' %}
+{% load static %}
+
+{% block role_nav %}
+{% with current=request.resolver_match.url_name %}
+<a class="nav__item {% if current == 'staff_panel' %}nav__item--active{% endif %}" href="{% url 'staff_panel' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#staff"></use></svg><span>Staff</span>
+</a>
+<a class="nav__item {% if current == 'staff_eventos' %}nav__item--active{% endif %}" href="{% url 'staff_eventos' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#history"></use></svg><span>Eventos</span>
+</a>
+<a class="nav__item {% if current == 'staff_mapa_asignacion' %}nav__item--active{% endif %}" href="{% url 'staff_mapa_asignacion' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#map"></use></svg><span>Mapa</span>
+</a>
+<a class="nav__item" href="{% url 'cliente' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#home"></use></svg><span>Cliente</span>
+</a>
+{% if can_view_vendor %}
+<a class="nav__item" href="{% url 'vendedor' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#store"></use></svg><span>Vendedor</span>
+</a>
+{% endif %}
+{% if can_view_admin %}
+<a class="nav__item" href="{% url 'admin_inicio' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#admin"></use></svg><span>Administrador</span>
+</a>
+{% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block sidebar_userbox %}
+{% with role_label='Staff' show_account_link=False show_client_link=True %}
+  {% include 'core/includes/userbox.html' %}
+{% endwith %}
+{% endblock %}

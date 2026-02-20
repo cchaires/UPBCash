@@ -1,107 +1,40 @@
+{% extends 'core/layouts/client_shell.html' %}
 {% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Historial de recargas</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
-</head>
-<body>
-  <div class="page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
 
-        <nav class="nav" aria-label="Secciones del cliente">
-          <a class="nav__item" href="{% url 'cliente' %}">
-            <span class="nav__icon">🏠</span><span>Inicio</span>
-          </a>
-          <a class="nav__item" href="{% url 'cliente_mapa' %}">
-            <span class="nav__icon">📍</span><span>Mapa</span>
-          </a>
-          <a class="nav__item" href="{% url 'menu_alimentos' %}">
-            <span class="nav__icon">🍽️</span><span>Menu alimentos</span>
-          </a>
-          <a class="nav__item" href="{% url 'historial_compras' %}">
-            <span class="nav__icon">🕒</span><span>Historial compras</span>
-          </a>
-          <a class="nav__item nav__item--active" href="{% url 'historial_recargas' %}">
-            <span class="nav__icon">🧾</span><span>Historial recargas</span>
-          </a>
-          <a class="nav__item" href="{% url 'recarga' %}">
-            <span class="nav__icon">💳</span><span>Recarga</span>
-          </a>
-        </nav>
+{% block title %}UPBCash - Historial de recargas{% endblock %}
 
-        <div class="sidebar__spacer"></div>
-
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-          <div class="userbox__info">
-            <div class="userbox__name">Fernando</div>
-            <div class="userbox__sub">Cliente</div>
-          </div>
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
-            {% if can_view_vendor %}
-            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
-            {% endif %}
-            {% if can_view_staff %}
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            {% endif %}
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="main__inner main__inner--scroll">
-          <header class="main__header">
-            <div>
-              <h1 class="page-title">Historial de recargas</h1>
-              <p class="page-subtitle">Recargas de creditos realizadas.</p>
-            </div>
-          </header>
-
-          {% if messages %}
-          {% for message in messages %}
-          <p class="helper" style="color:#2f8f5b; margin: 0 0 12px;">{{ message }}</p>
-          {% endfor %}
-          {% endif %}
-
-          <section class="card">
-            <div class="list">
-              {% for recarga in recargas %}
-              <div class="list-item">
-                <div>
-                  <div class="list-item__title">Recarga PayPal</div>
-                  <div class="list-item__meta">ID: {{ recarga.code }} · {{ recarga.created_at|date:"d M" }} · {{ recarga.card_label }}</div>
-                  <a class="report-link" href="{% url 'reporte_recarga' recarga.code %}">
-                    <span class="report-icon" aria-hidden="true">!</span>
-                    Reportar problema
-                  </a>
-                </div>
-                <div class="list-item__price">+${{ recarga.amount|floatformat:2 }}</div>
-              </div>
-              {% empty %}
-              <div class="list-item">
-                <div>
-                  <div class="list-item__title">Sin recargas registradas</div>
-                  <div class="list-item__meta">Haz tu primera recarga para verla aqui.</div>
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+{% block content %}
+<header class="main__header">
+  <div>
+    <h1 class="page-title">Historial de recargas</h1>
+    <p class="page-subtitle">Recargas de creditos realizadas.</p>
   </div>
+</header>
 
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-</body>
-</html>
+{% include 'core/includes/flash_messages.html' %}
+
+<section class="card">
+  <div class="list">
+    {% for recarga in recargas %}
+    <div class="list-item">
+      <div>
+        <div class="list-item__title">Recarga PayPal</div>
+        <div class="list-item__meta">ID: {{ recarga.code }} · {{ recarga.created_at|date:"d M" }} · {{ recarga.card_label }}</div>
+        <a class="report-link" href="{% url 'reporte_recarga' recarga.code %}">
+          <span class="report-icon" aria-hidden="true"><svg class="icon icon--sm"><use href="{% static 'core/icons/sprite.svg' %}#report"></use></svg></span>
+          Reportar problema
+        </a>
+      </div>
+      <div class="list-item__price">+${{ recarga.amount|floatformat:2 }}</div>
+    </div>
+    {% empty %}
+    <div class="list-item">
+      <div>
+        <div class="list-item__title">Sin recargas registradas</div>
+        <div class="list-item__meta">Haz tu primera recarga para verla aqui.</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

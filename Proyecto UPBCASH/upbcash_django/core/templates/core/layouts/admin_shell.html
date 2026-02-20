@@ -1,0 +1,25 @@
+{% extends 'core/layouts/shell_base.html' %}
+{% load static %}
+
+{% block role_nav %}
+{% with current=request.resolver_match.url_name %}
+<a class="nav__item {% if current == 'admin_inicio' %}nav__item--active{% endif %}" href="{% url 'admin_inicio' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#home"></use></svg><span>Inicio</span>
+</a>
+<a class="nav__item {% if current == 'admin_mapa' %}nav__item--active{% endif %}" href="{% url 'admin_mapa' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#map"></use></svg><span>Mapa</span>
+</a>
+<a class="nav__item" href="{% url 'vendedor_ventas' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#chart"></use></svg><span>Ventas</span>
+</a>
+<a class="nav__item" href="{% url 'vendedor_productos' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#store"></use></svg><span>Quioscos</span>
+</a>
+{% endwith %}
+{% endblock %}
+
+{% block sidebar_userbox %}
+{% with role_label='Administrador' show_account_link=False show_client_link=True %}
+  {% include 'core/includes/userbox.html' %}
+{% endwith %}
+{% endblock %}

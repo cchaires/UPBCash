@@ -1,0 +1,28 @@
+{% extends 'core/layouts/shell_base.html' %}
+{% load static %}
+
+{% block role_nav %}
+{% with current=request.resolver_match.url_name %}
+<a class="nav__item {% if current == 'vendedor' %}nav__item--active{% endif %}" href="{% url 'vendedor' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#home"></use></svg><span>Inicio</span>
+</a>
+<a class="nav__item {% if current == 'vendedor_tienda' %}nav__item--active{% endif %}" href="{% url 'vendedor_tienda' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#store"></use></svg><span>Tienda</span>
+</a>
+<a class="nav__item {% if current == 'vendedor_productos' %}nav__item--active{% endif %}" href="{% url 'vendedor_productos' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#menu"></use></svg><span>Productos</span>
+</a>
+<a class="nav__item {% if current == 'vendedor_ventas' %}nav__item--active{% endif %}" href="{% url 'vendedor_ventas' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#chart"></use></svg><span>Ventas</span>
+</a>
+<a class="nav__item {% if current == 'vendedor_mapa' %}nav__item--active{% endif %}" href="{% url 'vendedor_mapa' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#map"></use></svg><span>Mapa</span>
+</a>
+{% endwith %}
+{% endblock %}
+
+{% block sidebar_userbox %}
+{% with role_label='Vendedor' show_account_link=False show_client_link=True %}
+  {% include 'core/includes/userbox.html' %}
+{% endwith %}
+{% endblock %}

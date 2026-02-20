@@ -1,0 +1,22 @@
+{% extends 'core/layouts/shell_base.html' %}
+{% load static %}
+
+{% block role_nav %}
+{% with current=request.resolver_match.url_name %}
+<a class="nav__item {% if current == 'mi_cuenta' %}nav__item--active{% endif %}" href="{% url 'mi_cuenta' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#user"></use></svg><span>Mi cuenta</span>
+</a>
+<a class="nav__item {% if current == 'mi_cuenta_tarjetas' or current == 'mi_cuenta_tarjeta_editar' %}nav__item--active{% endif %}" href="{% url 'mi_cuenta_tarjetas' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#wallet"></use></svg><span>Tarjetas</span>
+</a>
+<a class="nav__item {% if current == 'mi_cuenta_resumen' %}nav__item--active{% endif %}" href="{% url 'mi_cuenta_resumen' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#chart"></use></svg><span>Resumen</span>
+</a>
+{% endwith %}
+{% endblock %}
+
+{% block sidebar_userbox %}
+{% with role_label='Cuenta' show_account_link=False show_client_link=True %}
+  {% include 'core/includes/userbox.html' %}
+{% endwith %}
+{% endblock %}

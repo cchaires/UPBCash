@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}UPBCash{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'core/css/tokens.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/base.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/layout-shell.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/components.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/utilities.css' %}" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <main class="shell-auth">
+    <section class="auth-card">
+      <header class="auth-card__header">
+        <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo.png' %}" alt="UPBCash" />
+      </header>
+      <div class="auth-card__body">
+        {% block content %}{% endblock %}
+      </div>
+    </section>
+  </main>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

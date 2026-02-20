@@ -1,0 +1,58 @@
+:root {
+  --brand-purple-900: #3f0b5b;
+  --brand-purple-800: #4a0f6f;
+  --brand-purple-700: #5b137e;
+  --brand-purple-600: #6f2b95;
+  --brand-purple-100: #efe6f7;
+
+  --brand-gold-600: #d4a11f;
+  --brand-gold-500: #ffbf20;
+  --brand-gold-400: #ffd25f;
+  --brand-gold-100: #fff3cf;
+
+  --text-primary: #22152b;
+  --text-secondary: #4e4160;
+  --text-muted: #6f6282;
+
+  --surface: #ffffff;
+  --surface-elevated: #f8f4fc;
+  --surface-muted: #f1e9f8;
+
+  --stroke-soft: rgba(34, 21, 43, 0.14);
+  --stroke-strong: rgba(34, 21, 43, 0.28);
+
+  --state-success-bg: #e8f4ec;
+  --state-success-text: #155738;
+  --state-success-stroke: #53a072;
+
+  --state-warning-bg: #fff4d9;
+  --state-warning-text: #6b4700;
+  --state-warning-stroke: #ba8e24;
+
+  --state-error-bg: #fdecef;
+  --state-error-text: #8d1232;
+  --state-error-stroke: #d04a6d;
+
+  --state-info-bg: #f0e9f9;
+  --state-info-text: #4a176a;
+  --state-info-stroke: #7e48a5;
+
+  --focus-ring: 3px solid #b16bff;
+
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 8px 20px rgba(22, 10, 33, 0.1);
+  --shadow-md: 0 16px 34px rgba(22, 10, 33, 0.16);
+  --shadow-lg: 0 26px 58px rgba(22, 10, 33, 0.24);
+
+  --font-sans: "UPBCash Sans", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "UPBCash Display", "Trebuchet MS", "Segoe UI", sans-serif;
+
+  --z-dropdown: 20;
+  --z-modal: 100;
+}

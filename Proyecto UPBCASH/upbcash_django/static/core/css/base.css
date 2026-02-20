@@ -1,0 +1,77 @@
+@font-face {
+  font-family: "UPBCash Sans";
+  src: local("Inter"), local("Segoe UI");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "UPBCash Display";
+  src: local("Poppins"), local("Trebuchet MS");
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: radial-gradient(1300px 700px at 24% 0%, #8542a8 0%, var(--brand-purple-700) 42%, var(--brand-purple-900) 100%);
+  line-height: 1.45;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: var(--brand-purple-700);
+}
+
+a:hover {
+  color: var(--brand-purple-900);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+}

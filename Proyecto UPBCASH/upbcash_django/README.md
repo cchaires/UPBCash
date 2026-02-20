@@ -113,6 +113,50 @@ Aplicacion web de UPBCash para gestion de UCoins por eventos/campanas con roles 
 - `upbcash/settings.py`: configuracion por entorno y DB.
 - `docker-compose.yml`: servicios de desarrollo (`db` y `web`).
 
+## Sistema visual UI/UX (2026)
+
+Se implemento un sistema visual unificado para cliente, vendedor, staff, cuenta, auth y admin.
+
+### Tokens y capas de estilo
+
+- `static/core/css/tokens.css`: paleta de marca, tipografia, radios, sombras, estados semanticos y focus ring.
+- `static/core/css/base.css`: reset base, fuentes y reglas globales de accesibilidad.
+- `static/core/css/layout-shell.css`: layout principal (sidebar + contenido) y layout auth.
+- `static/core/css/components.css`: componentes reutilizables (`btn`, `flash`, `card`, `table`, `map-spot`, formularios, modales).
+- `static/core/css/utilities.css`: utilidades ligeras de espaciado/alineacion/iconos.
+- `static/core/css/cliente_web_app.css`: capa especifica para `cliente_web_app.html`.
+
+### Layouts y reutilizacion de plantillas
+
+- `core/templates/core/layouts/shell_base.html`: layout base para pantallas autenticadas.
+- `core/templates/core/layouts/client_shell.html`: navegación y userbox de cliente.
+- `core/templates/core/layouts/vendor_shell.html`: navegación y userbox de vendedor.
+- `core/templates/core/layouts/staff_shell.html`: navegación y userbox de staff.
+- `core/templates/core/layouts/account_shell.html`: navegación y userbox de cuenta.
+- `core/templates/core/layouts/admin_shell.html`: navegación y userbox de admin.
+- `core/templates/core/layouts/auth_base.html`: base de autenticación (`index`, `registro`, `recuperar`).
+
+### Includes compartidos
+
+- `core/templates/core/includes/sidebar_brand.html`
+- `core/templates/core/includes/userbox.html`
+- `core/templates/core/includes/flash_messages.html`
+
+### Iconografia local
+
+- Sprite local en `static/core/icons/sprite.svg`.
+- Uso recomendado en templates:
+  - `<svg class=\"icon\" aria-hidden=\"true\"><use href=\"{% static 'core/icons/sprite.svg' %}#home\"></use></svg>`
+
+### Dropdown de cuenta
+
+- `static/core/js/dropdown_cliente.js` unifica apertura/cierre por clase `is-open`.
+- Incluye soporte de `Escape`, click fuera, y sincronizacion de `aria-expanded` / `aria-hidden`.
+
+### Compatibilidad de estilos legado
+
+Los archivos legacy (`index.css`, `styles_cliente_layout.css`, `styles_vendedor_layout.css`, `styles_staff_layout.css`, `styles_mi_cuenta.css`, `styles_recarga_saldo.css`) quedaron como wrappers que importan el nuevo sistema para mantener compatibilidad incremental.
+
 ## Requisitos por sistema operativo
 
 ## Compatibilidad minima

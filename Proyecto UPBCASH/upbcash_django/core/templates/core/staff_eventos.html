@@ -1,144 +1,68 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Eventos Staff</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
-  <link rel="stylesheet" href="{% static 'core/css/styles_staff_layout.css' %}" />
-</head>
-<body>
-  <div class="page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
+{% extends 'core/layouts/staff_shell.html' %}
 
-        <nav class="nav" aria-label="Secciones de staff">
-          <a class="nav__item" href="{% url 'staff_panel' %}"><span class="nav__icon">🛠️</span><span>Staff</span></a>
-          <a class="nav__item nav__item--active" href="{% url 'staff_eventos' %}"><span class="nav__icon">📅</span><span>Eventos</span></a>
-          <a class="nav__item" href="{% url 'staff_mapa_asignacion' %}"><span class="nav__icon">🗺️</span><span>Mapa asignacion</span></a>
-          <a class="nav__item" href="{% url 'cliente' %}"><span class="nav__icon">🏠</span><span>Cliente</span></a>
-        </nav>
+{% block title %}UPBCash - Eventos staff{% endblock %}
 
-        <div class="sidebar__spacer"></div>
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-          <div class="userbox__info">
-            <div class="userbox__name">{{ user_display_name }}</div>
-            <div class="userbox__sub">Staff</div>
-          </div>
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
-            {% if can_view_vendor %}<a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>{% endif %}
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="main__inner main__inner--scroll">
-          <header class="main__header">
-            <div>
-              <h1 class="page-title">Gestión de campañas y eventos</h1>
-              <p class="page-subtitle">Ventana de campaña (staff/vendedor) y ventana pública (cliente).</p>
-            </div>
-          </header>
-
-          {% if messages %}
-          <section class="card" style="margin-top: 14px;">
-            {% for message in messages %}
-            <p class="helper" style="margin: 0 0 10px; color:{% if message.tags == 'error' %}#b00020{% elif message.tags == 'warning' %}#7a5200{% else %}#2f8f5b{% endif %};">{{ message }}</p>
-            {% endfor %}
-          </section>
-          {% endif %}
-
-          <section class="card" style="margin-top: 14px;">
-            <h2 class="page-title staff-section-title">{% if editing_event %}Editar evento{% else %}Crear evento{% endif %}</h2>
-            <form method="post" enctype="multipart/form-data" class="form form--wide staff-form-grid">
-              {% csrf_token %}
-              {% if editing_event %}<input type="hidden" name="event_id" value="{{ editing_event.id }}" />{% endif %}
-              <div class="field">
-                <label for="code">Codigo</label>
-                <input class="input" id="code" name="code" maxlength="32" required value="{% if editing_event %}{{ editing_event.code }}{% endif %}" />
-              </div>
-              <div class="field">
-                <label for="name">Nombre</label>
-                <input class="input" id="name" name="name" maxlength="160" required value="{% if editing_event %}{{ editing_event.name }}{% endif %}" />
-              </div>
-              <div class="field">
-                <label for="status">Status</label>
-                <select class="input" id="status" name="status">
-                  {% for value, label in campaign_statuses %}
-                  <option value="{{ value }}" {% if editing_event and editing_event.status == value %}selected{% endif %}>{{ label }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label for="starts_at">Campaña inicia</label>
-                <input class="input" id="starts_at" name="starts_at" type="datetime-local" required value="{% if editing_event %}{{ editing_event.starts_at|date:'Y-m-d\\TH:i' }}{% endif %}" />
-              </div>
-              <div class="field">
-                <label for="ends_at">Campaña termina</label>
-                <input class="input" id="ends_at" name="ends_at" type="datetime-local" required value="{% if editing_event %}{{ editing_event.ends_at|date:'Y-m-d\\TH:i' }}{% endif %}" />
-              </div>
-              <div class="field">
-                <label for="public_starts_at">Evento público inicia</label>
-                <input class="input" id="public_starts_at" name="public_starts_at" type="datetime-local" value="{% if editing_event and editing_event.public_starts_at %}{{ editing_event.public_starts_at|date:'Y-m-d\\TH:i' }}{% endif %}" />
-              </div>
-              <div class="field">
-                <label for="public_ends_at">Evento público termina</label>
-                <input class="input" id="public_ends_at" name="public_ends_at" type="datetime-local" value="{% if editing_event and editing_event.public_ends_at %}{{ editing_event.public_ends_at|date:'Y-m-d\\TH:i' }}{% endif %}" />
-              </div>
-              <div class="field">
-                <label for="max_map_spots">Maximo de espacios</label>
-                <input class="input" id="max_map_spots" name="max_map_spots" type="number" min="1" required value="{% if editing_event %}{{ editing_event.max_map_spots }}{% else %}5{% endif %}" />
-              </div>
-              <div class="field">
-                <label for="map_image">Imagen del mapa</label>
-                <input class="input" id="map_image" name="map_image" type="file" accept="image/*" />
-                {% if editing_event and editing_event.map_image %}
-                <img src="{{ editing_event.map_image.url }}" alt="Mapa" style="margin-top:8px; max-width:280px; border-radius:8px;" />
-                <label class="inline-check"><input type="checkbox" name="remove_map_image" /> Quitar imagen actual</label>
-                {% endif %}
-              </div>
-              <div class="field" style="grid-column: 1 / -1;">
-                <label for="description">Descripcion</label>
-                <textarea class="input" id="description" name="description" rows="3">{% if editing_event %}{{ editing_event.description }}{% endif %}</textarea>
-              </div>
-              <div class="actions-row" style="grid-column: 1 / -1;">
-                <button class="btn btn--secondary" type="submit">Guardar evento</button>
-                <a class="btn btn--secondary" href="{% url 'staff_eventos' %}">Nuevo</a>
-              </div>
-            </form>
-          </section>
-
-          <section class="card" style="margin-top: 14px;">
-            <h2 class="page-title staff-section-title">Eventos registrados</h2>
-            <div class="list">
-              {% for campaign in campaigns %}
-              <article class="list-item">
-                <div>
-                  <div class="list-item__title">{{ campaign.code }} · {{ campaign.name }}</div>
-                  <div class="list-item__meta">Campaña: {{ campaign.starts_at|date:"d/m H:i" }} - {{ campaign.ends_at|date:"d/m H:i" }}</div>
-                  <div class="list-item__meta">Público: {{ campaign.public_starts_at|default:campaign.starts_at|date:"d/m H:i" }} - {{ campaign.public_ends_at|default:campaign.ends_at|date:"d/m H:i" }}</div>
-                </div>
-                <a class="btn btn--secondary" href="{% url 'staff_eventos' %}?event_id={{ campaign.id }}">Editar</a>
-              </article>
-              {% empty %}
-              <article class="list-item"><div class="list-item__title">Sin eventos registrados.</div></article>
-              {% endfor %}
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+{% block content %}
+<header class="main__header">
+  <div>
+    <h1 class="page-title">Gestion de campanas y eventos</h1>
+    <p class="page-subtitle">Ventana de campana (staff/vendedor) y ventana publica (cliente).</p>
   </div>
+</header>
 
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-</body>
-</html>
+{% include 'core/includes/flash_messages.html' %}
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">{% if editing_event %}Editar evento{% else %}Crear evento{% endif %}</h2>
+  <form method="post" enctype="multipart/form-data" class="form form--wide staff-form-grid">
+    {% csrf_token %}
+    {% if editing_event %}<input type="hidden" name="event_id" value="{{ editing_event.id }}" />{% endif %}
+    <div class="field"><label for="code">Codigo</label><input class="input" id="code" name="code" maxlength="32" required value="{% if editing_event %}{{ editing_event.code }}{% endif %}" /></div>
+    <div class="field"><label for="name">Nombre</label><input class="input" id="name" name="name" maxlength="160" required value="{% if editing_event %}{{ editing_event.name }}{% endif %}" /></div>
+    <div class="field">
+      <label for="status">Status</label>
+      <select class="input" id="status" name="status">
+        {% for value, label in campaign_statuses %}
+        <option value="{{ value }}" {% if editing_event and editing_event.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field"><label for="starts_at">Campana inicia</label><input class="input" id="starts_at" name="starts_at" type="datetime-local" required value="{% if editing_event %}{{ editing_event.starts_at|date:'Y-m-d\\TH:i' }}{% endif %}" /></div>
+    <div class="field"><label for="ends_at">Campana termina</label><input class="input" id="ends_at" name="ends_at" type="datetime-local" required value="{% if editing_event %}{{ editing_event.ends_at|date:'Y-m-d\\TH:i' }}{% endif %}" /></div>
+    <div class="field"><label for="public_starts_at">Evento publico inicia</label><input class="input" id="public_starts_at" name="public_starts_at" type="datetime-local" value="{% if editing_event and editing_event.public_starts_at %}{{ editing_event.public_starts_at|date:'Y-m-d\\TH:i' }}{% endif %}" /></div>
+    <div class="field"><label for="public_ends_at">Evento publico termina</label><input class="input" id="public_ends_at" name="public_ends_at" type="datetime-local" value="{% if editing_event and editing_event.public_ends_at %}{{ editing_event.public_ends_at|date:'Y-m-d\\TH:i' }}{% endif %}" /></div>
+    <div class="field"><label for="max_map_spots">Maximo de espacios</label><input class="input" id="max_map_spots" name="max_map_spots" type="number" min="1" required value="{% if editing_event %}{{ editing_event.max_map_spots }}{% else %}5{% endif %}" /></div>
+    <div class="field">
+      <label for="map_image">Imagen del mapa</label>
+      <input class="input" id="map_image" name="map_image" type="file" accept="image/*" />
+      {% if editing_event and editing_event.map_image %}
+      <img src="{{ editing_event.map_image.url }}" alt="Mapa" class="mt-8 max-w-280 rounded-8" />
+      <label class="inline-check"><input type="checkbox" name="remove_map_image" /> Quitar imagen actual</label>
+      {% endif %}
+    </div>
+    <div class="field grid-col-full"><label for="description">Descripcion</label><textarea class="input" id="description" name="description" rows="3">{% if editing_event %}{{ editing_event.description }}{% endif %}</textarea></div>
+    <div class="actions-row grid-col-full">
+      <button class="btn btn--secondary" type="submit">Guardar evento</button>
+      <a class="btn btn--ghost" href="{% url 'staff_eventos' %}">Nuevo</a>
+    </div>
+  </form>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Eventos registrados</h2>
+  <div class="list">
+    {% for campaign in campaigns %}
+    <article class="list-item">
+      <div>
+        <div class="list-item__title">{{ campaign.code }} · {{ campaign.name }}</div>
+        <div class="list-item__meta">Campana: {{ campaign.starts_at|date:"d/m H:i" }} - {{ campaign.ends_at|date:"d/m H:i" }}</div>
+        <div class="list-item__meta">Publico: {{ campaign.public_starts_at|default:campaign.starts_at|date:"d/m H:i" }} - {{ campaign.public_ends_at|default:campaign.ends_at|date:"d/m H:i" }}</div>
+      </div>
+      <a class="btn btn--secondary" href="{% url 'staff_eventos' %}?event_id={{ campaign.id }}">Editar</a>
+    </article>
+    {% empty %}
+    <article class="list-item"><div class="list-item__title">Sin eventos registrados.</div></article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'core/layouts/shell_base.html' %}
+{% load static %}
+
+{% block role_nav %}
+{% with current=request.resolver_match.url_name %}
+<a class="nav__item {% if current == 'cliente' %}nav__item--active{% endif %}" href="{% url 'cliente' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#home"></use></svg><span>Inicio</span>
+</a>
+<a class="nav__item {% if current == 'cliente_mapa' %}nav__item--active{% endif %}" href="{% url 'cliente_mapa' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#map"></use></svg><span>Mapa</span>
+</a>
+<a class="nav__item {% if current == 'menu_alimentos' or current == 'carrito_cliente' %}nav__item--active{% endif %}" href="{% url 'menu_alimentos' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#menu"></use></svg><span>Menu</span>
+</a>
+<a class="nav__item {% if current == 'historial_compras' %}nav__item--active{% endif %}" href="{% url 'historial_compras' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#history"></use></svg><span>Compras</span>
+</a>
+<a class="nav__item {% if current == 'historial_recargas' or current == 'reporte_recarga' %}nav__item--active{% endif %}" href="{% url 'historial_recargas' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#report"></use></svg><span>Recargas</span>
+</a>
+<a class="nav__item {% if current == 'recarga' %}nav__item--active{% endif %}" href="{% url 'recarga' %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#wallet"></use></svg><span>Recargar</span>
+</a>
+{% endwith %}
+{% endblock %}
+
+{% block sidebar_userbox %}
+{% with role_label='Cliente' show_account_link=True show_client_link=False %}
+  {% include 'core/includes/userbox.html' %}
+{% endwith %}
+{% endblock %}

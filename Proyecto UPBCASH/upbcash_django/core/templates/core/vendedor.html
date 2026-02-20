@@ -1,150 +1,81 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Vendedor</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_vendedor_layout.css' %}" />
-</head>
-<body>
-  <div class="page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
+{% extends 'core/layouts/vendor_shell.html' %}
 
-        <nav class="nav" aria-label="Secciones del vendedor">
-          <a class="nav__item nav__item--active" href="{% url 'vendedor' %}">
-            <span class="nav__icon">🏠</span><span>Inicio</span>
-          </a>
-          <a class="nav__item" href="{% url 'vendedor_tienda' %}">
-            <span class="nav__icon">🏪</span><span>Tienda</span>
-          </a>
-          <a class="nav__item" href="{% url 'vendedor_productos' %}">
-            <span class="nav__icon">🍽️</span><span>Productos</span>
-          </a>
-          <a class="nav__item" href="{% url 'vendedor_ventas' %}">
-            <span class="nav__icon">📊</span><span>Ventas</span>
-          </a>
-          <a class="nav__item" href="{% url 'vendedor_mapa' %}">
-            <span class="nav__icon">🗺️</span><span>Mapa</span>
-          </a>
-        </nav>
+{% block title %}UPBCash - Vendedor{% endblock %}
 
-        <div class="sidebar__spacer"></div>
-
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-          <div class="userbox__info">
-            <div class="userbox__name">{{ user_display_name }}</div>
-            <div class="userbox__sub">Vendedor</div>
-          </div>
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
-            {% if can_view_vendor %}
-            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
-            {% endif %}
-            {% if can_view_staff %}
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            {% endif %}
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="main__inner main__inner--scroll">
-          <header class="main__header">
-            <div class="title-block">
-              <h1>Panel del vendedor</h1>
-              {% if event %}
-              <p>Resumen de hoy y control de productos para {{ event.name }}.</p>
-              {% else %}
-              <p>No hay un evento activo configurado.</p>
-              {% endif %}
-            </div>
-            <div class="status-pill">
-              {% if assignment %}
-              Tienda: {{ assignment.stall.name }}
-              {% else %}
-              Sin tienda creada
-              {% endif %}
-            </div>
-          </header>
-
-          {% if assignment %}
-          <section class="panel" style="margin-bottom: 16px;">
-            <div class="panel__title">
-              <h2>Imagen de tienda</h2>
-            </div>
-            {% if stall_image_url %}
-            <img src="{{ stall_image_url }}" alt="Imagen de {{ assignment.stall.name }}" style="max-width: 260px; border-radius: 10px;" />
-            {% else %}
-            <p class="item__desc">Aun no has cargado una imagen de tienda. Puedes hacerlo en la seccion Productos.</p>
-            {% endif %}
-          </section>
-          {% endif %}
-
-          {% if not assignment %}
-          <section class="panel" style="margin-bottom: 16px;">
-            <p class="item__desc">Crea tu tienda para empezar a gestionar productos durante la campaña.</p>
-            <a class="btn btn--secondary" href="{% url 'vendedor_tienda' %}">Crear tienda</a>
-          </section>
-          {% endif %}
-
-          <section class="panel">
-            <div class="panel__title">
-              <h2>Resumen de hoy</h2>
-              <span class="status-pill">{% now "d M Y" %}</span>
-            </div>
-            <div class="menu-grid">
-              <article class="menu-item">
-                <div class="item__name">Ventas del dia</div>
-                <div class="item__desc">Total acumulado</div>
-                <div class="item__price"><span>${{ today_sales_total|floatformat:2 }}</span></div>
-              </article>
-              <article class="menu-item">
-                <div class="item__name">Pedidos pendientes</div>
-                <div class="item__desc">Por atender</div>
-                <div class="item__price"><span>{{ pending_orders }}</span></div>
-              </article>
-              <article class="menu-item">
-                <div class="item__name">Stock bajo</div>
-                <div class="item__desc">Productos por revisar</div>
-                <div class="item__price"><span>{{ low_stock_count }}</span></div>
-              </article>
-            </div>
-          </section>
-
-          <section class="panel" style="margin-top: 16px;">
-            <div class="panel__title">
-              <h2>Ultimas ventas</h2>
-              <a href="{% url 'vendedor_ventas' %}">Ver todas</a>
-            </div>
-            <div class="menu-grid">
-              {% for row in latest_sales %}
-              <article class="menu-item">
-                <div class="item__name">{{ row.title }}</div>
-                <div class="item__desc">{{ row.description }}</div>
-                <div class="item__price"><span>${{ row.total|floatformat:2 }}</span></div>
-              </article>
-              {% empty %}
-              <article class="menu-item">
-                <div class="item__name">Sin ventas registradas</div>
-                <div class="item__desc">Cuando haya compras en el esquema nuevo apareceran aqui.</div>
-                <div class="item__price"><span>$0.00</span></div>
-              </article>
-              {% endfor %}
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+{% block content %}
+<header class="main__header">
+  <div class="title-block">
+    <h1 class="page-title">Panel del vendedor</h1>
+    {% if event %}
+    <p class="page-subtitle">Resumen de hoy y control de productos para {{ event.name }}.</p>
+    {% else %}
+    <p class="page-subtitle">No hay un evento activo configurado.</p>
+    {% endif %}
   </div>
+  <div class="status-pill">{% if assignment %}Tienda: {{ assignment.stall.name }}{% else %}Sin tienda creada{% endif %}</div>
+</header>
 
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-</body>
-</html>
+{% if assignment %}
+<section class="panel mb-16">
+  <div class="panel__title"><h2>Imagen de tienda</h2></div>
+  {% if stall_image_url %}
+  <img src="{{ stall_image_url }}" alt="Imagen de {{ assignment.stall.name }}" class="max-w-260 rounded-10" />
+  {% else %}
+  <p class="item__desc">Aun no has cargado una imagen de tienda. Puedes hacerlo en la seccion Productos.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if not assignment %}
+<section class="panel mb-16">
+  <p class="item__desc">Crea tu tienda para empezar a gestionar productos durante la campana.</p>
+  <a class="btn btn--secondary" href="{% url 'vendedor_tienda' %}">Crear tienda</a>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel__title">
+    <h2>Resumen de hoy</h2>
+    <span class="status-pill">{% now "d M Y" %}</span>
+  </div>
+  <div class="menu-grid">
+    <article class="menu-item">
+      <div class="item__name">Ventas del dia</div>
+      <div class="item__desc">Total acumulado</div>
+      <div class="item__price"><span>${{ today_sales_total|floatformat:2 }}</span></div>
+    </article>
+    <article class="menu-item">
+      <div class="item__name">Pedidos pendientes</div>
+      <div class="item__desc">Por atender</div>
+      <div class="item__price"><span>{{ pending_orders }}</span></div>
+    </article>
+    <article class="menu-item">
+      <div class="item__name">Stock bajo</div>
+      <div class="item__desc">Productos por revisar</div>
+      <div class="item__price"><span>{{ low_stock_count }}</span></div>
+    </article>
+  </div>
+</section>
+
+<section class="panel mt-16">
+  <div class="panel__title">
+    <h2>Ultimas ventas</h2>
+    <a href="{% url 'vendedor_ventas' %}">Ver todas</a>
+  </div>
+  <div class="menu-grid">
+    {% for row in latest_sales %}
+    <article class="menu-item">
+      <div class="item__name">{{ row.title }}</div>
+      <div class="item__desc">{{ row.description }}</div>
+      <div class="item__price"><span>${{ row.total|floatformat:2 }}</span></div>
+    </article>
+    {% empty %}
+    <article class="menu-item">
+      <div class="item__name">Sin ventas registradas</div>
+      <div class="item__desc">Cuando haya compras en el esquema nuevo apareceran aqui.</div>
+      <div class="item__price"><span>$0.00</span></div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

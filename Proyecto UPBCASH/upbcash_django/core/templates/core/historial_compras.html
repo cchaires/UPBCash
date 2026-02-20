@@ -1,102 +1,35 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Historial de compras</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
-</head>
-<body>
-  <div class="page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
+{% extends 'core/layouts/client_shell.html' %}
 
-        <nav class="nav" aria-label="Secciones del cliente">
-          <a class="nav__item" href="{% url 'cliente' %}">
-            <span class="nav__icon">🏠</span><span>Inicio</span>
-          </a>
-          <a class="nav__item" href="{% url 'cliente_mapa' %}">
-            <span class="nav__icon">📍</span><span>Mapa</span>
-          </a>
-          <a class="nav__item" href="{% url 'menu_alimentos' %}">
-            <span class="nav__icon">🍽️</span><span>Menu alimentos</span>
-          </a>
-          <a class="nav__item nav__item--active" href="{% url 'historial_compras' %}">
-            <span class="nav__icon">🕒</span><span>Historial compras</span>
-          </a>
-          <a class="nav__item" href="{% url 'recarga' %}">
-            <span class="nav__icon">💳</span><span>Recarga</span>
-          </a>
-        </nav>
+{% block title %}UPBCash - Historial de compras{% endblock %}
 
-        <div class="sidebar__spacer"></div>
-
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-          <div class="userbox__info">
-            <div class="userbox__name">{{ request.user.first_name|default:request.user.username }}</div>
-            <div class="userbox__sub">Cliente</div>
-          </div>
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'mi_cuenta' %}" role="menuitem">Cuenta</a>
-            {% if can_view_vendor %}
-            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
-            {% endif %}
-            {% if can_view_staff %}
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            {% endif %}
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="main__inner main__inner--scroll">
-          <header class="main__header">
-            <div>
-              <h1 class="page-title">Historial de compras</h1>
-              <p class="page-subtitle">Compras realizadas en el esquema V2.</p>
-            </div>
-          </header>
-
-          <section class="card">
-            {% if messages %}
-              {% for message in messages %}
-                <p class="helper" style="margin: 0 0 12px; color:{% if message.tags == 'error' %}#b00020{% else %}#2f8f5b{% endif %};">{{ message }}</p>
-              {% endfor %}
-            {% endif %}
-
-            <div class="list">
-              {% for row in purchase_rows %}
-                <div class="list-item">
-                  <div>
-                    <div class="list-item__title">{{ row.product_name }}</div>
-                    <div class="list-item__meta">
-                      {{ row.created_at|date:"d M H:i" }} · {{ row.stall_name }} · Cantidad: {{ row.quantity }} · Unitario: ${{ row.unit_price|floatformat:2 }} · Estado: {{ row.status }}
-                    </div>
-                  </div>
-                  <div class="list-item__price">-${{ row.line_total|floatformat:2 }}</div>
-                </div>
-              {% empty %}
-                <div class="list-item">
-                  <div>
-                    <div class="list-item__title">Aun no tienes compras</div>
-                    <div class="list-item__meta">Tu historial se llenara cuando pagues un carrito.</div>
-                  </div>
-                </div>
-              {% endfor %}
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+{% block content %}
+<header class="main__header">
+  <div>
+    <h1 class="page-title">Historial de compras</h1>
+    <p class="page-subtitle">Compras realizadas en el esquema V2.</p>
   </div>
+</header>
 
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-</body>
-</html>
+{% include 'core/includes/flash_messages.html' %}
+
+<section class="card">
+  <div class="list">
+    {% for row in purchase_rows %}
+      <div class="list-item">
+        <div>
+          <div class="list-item__title">{{ row.product_name }}</div>
+          <div class="list-item__meta">{{ row.created_at|date:"d M H:i" }} · {{ row.stall_name }} · Cantidad: {{ row.quantity }} · Unitario: ${{ row.unit_price|floatformat:2 }} · Estado: {{ row.status }}</div>
+        </div>
+        <div class="list-item__price">-${{ row.line_total|floatformat:2 }}</div>
+      </div>
+    {% empty %}
+      <div class="list-item">
+        <div>
+          <div class="list-item__title">Aun no tienes compras</div>
+          <div class="list-item__meta">Tu historial se llenara cuando pagues un carrito.</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% if messages %}
+<section class="panel panel--messages">
+  {% for message in messages %}
+    <p class="flash {% if 'error' in message.tags %}flash--error{% elif 'warning' in message.tags %}flash--warning{% elif 'success' in message.tags %}flash--success{% else %}flash--info{% endif %}">{{ message }}</p>
+  {% endfor %}
+</section>
+{% endif %}

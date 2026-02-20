@@ -1,0 +1,36 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}UPBCash{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'core/css/tokens.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/base.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/layout-shell.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/components.css' %}" />
+  <link rel="stylesheet" href="{% static 'core/css/utilities.css' %}" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <div class="page">
+    <div class="app-shell">
+      <aside class="sidebar">
+        {% include 'core/includes/sidebar_brand.html' %}
+        <nav class="nav" aria-label="Navegacion principal">
+          {% block role_nav %}{% endblock %}
+        </nav>
+        <div class="sidebar__spacer"></div>
+        {% block sidebar_userbox %}{% endblock %}
+      </aside>
+      <main class="main">
+        <div class="main__inner main__inner--scroll">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

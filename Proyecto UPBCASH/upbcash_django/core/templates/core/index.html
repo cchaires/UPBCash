@@ -1,71 +1,23 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash • Iniciar sesión</title>
+{% extends 'core/layouts/auth_base.html' %}
 
-  <link rel="stylesheet" href="{% static 'core/css/index.css' %}">
-</head>
+{% block title %}UPBCash • Iniciar sesion{% endblock %}
 
-<body>
-  <main class="page">
-    <section class="card">
+{% block content %}
+<form class="form" method="post" action="{% url 'index' %}">
+  {% csrf_token %}
 
-      <header class="card__header">
-        <img
-          class="brand__logo"
-          src="{% static 'core/img/imgupbcash-logo.png' %}"
-          alt="UPBCash"
-        />
-      </header>
+  {% if error_message %}
+  <p class="flash flash--error">{{ error_message }}</p>
+  {% endif %}
 
-      <div class="card__body">
-        <form class="form" method="post" action="{% url 'index' %}">
-          {% csrf_token %}
-          {% if error_message %}
-          <p class="error error--visible">{{ error_message }}</p>
-          {% endif %}
+  <input class="input" type="text" name="identifier" placeholder="Matricula / Correo" value="{{ request.POST.identifier|default:'' }}" required />
+  <input class="input" type="password" name="password" placeholder="Contrasena" required />
 
-          <input
-            class="input"
-            type="text"
-            name="identifier"
-            placeholder="Matrícula / Correo"
-            value="{{ request.POST.identifier|default:'' }}"
-            required
-          />
+  <a class="link-inline" href="{% url 'recuperar' %}">Olvidaste tu contrasena?</a>
 
-          <input
-            class="input"
-            type="password"
-            name="password"
-            placeholder="Contraseña"
-            required
-          />
+  <button class="btn btn--primary w-full" type="submit">Iniciar sesion</button>
 
-          <a href="{% url 'recuperar' %}" class="link link--center">¿Olvidaste tu contraseña?</a>
-
-          <button class="btn btn--primary" type="submit">
-            Iniciar sesión
-          </button>
-
-          <p class="helper">
-            ¿No tienes cuenta?
-            <a href="{% url 'registro' %}" class="link">Registrarse</a>
-          </p>
-
-          <hr class="divider">
-
-          <a href="{% url 'registro_invitado' %}" class="guest">
-            Entrar como invitado
-          </a>
-
-        </form>
-      </div>
-
-    </section>
-  </main>
-</body>
-</html>
+  <p class="helper">No tienes cuenta? <a href="{% url 'registro' %}">Registrarse</a></p>
+  <a class="btn btn--ghost w-full" href="{% url 'registro_invitado' %}">Entrar como invitado</a>
+</form>
+{% endblock %}

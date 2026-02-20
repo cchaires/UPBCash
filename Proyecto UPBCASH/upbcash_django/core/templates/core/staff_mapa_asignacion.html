@@ -1,318 +1,249 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Mapa Asignacion</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_cliente_layout.css' %}" />
-  <link rel="stylesheet" href="{% static 'core/css/styles_staff_layout.css' %}" />
-  <style>
-    .map-wrap { position: relative; width: 100%; max-width: 980px; border-radius: 12px; overflow: hidden; border: 1px solid #ddd; }
-    .map-wrap img { display: block; width: 100%; height: auto; }
-    .map-spot { position: absolute; transform: translate(-50%, -50%); border-radius: 999px; padding: 4px 8px; font-size: 12px; background: #0f766e; color: #fff; border: 0; cursor: pointer; }
-    .map-spot.selected { outline: 3px solid #111827; }
-    .map-spot.assigned { background: #0d9488; }
-    .map-spot.blocked { background: #475569; }
-    .layout-grid { display: grid; gap: 14px; grid-template-columns: 2fr 1fr; }
-    @media (max-width: 960px) { .layout-grid { grid-template-columns: 1fr; } }
-    .staff-mini-list { max-height: 320px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
-    .staff-mini-item { padding: 8px; border-bottom: 1px solid #f1f5f9; }
-    .staff-mini-item:last-child { border-bottom: 0; }
-    .hint { font-size: 12px; color: #475569; }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
+{% extends 'core/layouts/staff_shell.html' %}
 
-        <nav class="nav" aria-label="Secciones de staff">
-          <a class="nav__item" href="{% url 'staff_panel' %}"><span class="nav__icon">🛠️</span><span>Staff</span></a>
-          <a class="nav__item" href="{% url 'staff_eventos' %}"><span class="nav__icon">📅</span><span>Eventos</span></a>
-          <a class="nav__item nav__item--active" href="{% url 'staff_mapa_asignacion' %}"><span class="nav__icon">🗺️</span><span>Mapa asignacion</span></a>
-          <a class="nav__item" href="{% url 'cliente' %}"><span class="nav__icon">🏠</span><span>Cliente</span></a>
-        </nav>
+{% block title %}UPBCash - Mapa asignacion{% endblock %}
 
-        <div class="sidebar__spacer"></div>
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-          <div class="userbox__info">
-            <div class="userbox__name">{{ user_display_name }}</div>
-            <div class="userbox__sub">Staff</div>
-          </div>
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
-          </div>
-        </div>
-      </aside>
+{% block content %}
+<header class="main__header">
+  <div>
+    <h1 class="page-title">Mapa visual de asignacion</h1>
+    <p class="page-subtitle">Evento {{ event.code }} · maximo de espacios: {{ event.max_map_spots }}.</p>
+  </div>
+  <div class="status-pill">Spots actuales: <span id="spotCount">{{ spot_count }}</span></div>
+</header>
 
-      <main class="main">
-        <div class="main__inner main__inner--scroll">
-          <header class="main__header">
-            <div>
-              <h1 class="page-title">Mapa visual de asignación</h1>
-              <p class="page-subtitle">Evento {{ event.code }} · máximo de espacios: {{ event.max_map_spots }}.</p>
-            </div>
-            <div class="status-pill">Spots actuales: <span id="spotCount">{{ spot_count }}</span></div>
-          </header>
+{% include 'core/includes/flash_messages.html' %}
 
-          {% if messages %}
-          <section class="card" style="margin-top: 14px;">
-            {% for message in messages %}
-            <p class="helper" style="margin: 0 0 10px; color:{% if message.tags == 'error' %}#b00020{% elif message.tags == 'warning' %}#7a5200{% else %}#2f8f5b{% endif %};">{{ message }}</p>
-            {% endfor %}
-          </section>
-          {% endif %}
+<section class="card mt-14">
+  <div class="layout-grid">
+    <div>
+      <div class="actions-row mb-8">
+        <button id="btnCreateMode" class="btn btn--secondary" type="button">Modo crear spot</button>
+        <button id="btnMoveMode" class="btn btn--secondary" type="button">Mover spot seleccionado</button>
+        <button id="btnDeleteSpot" class="btn btn--danger" type="button">Eliminar spot</button>
+      </div>
+      <p class="hint">Haz click en el mapa para crear o mover spots (coordenadas normalizadas 0..1).</p>
+      <div class="map-wrap" id="mapWrap">
+        <img id="mapImage" src="{{ map_image_url }}" alt="Mapa evento" />
+      </div>
+    </div>
 
-          <section class="card" style="margin-top: 14px;">
-            <div class="layout-grid">
-              <div>
-                <div class="actions-row" style="margin-bottom: 8px;">
-                  <button id="btnCreateMode" class="btn btn--secondary" type="button">Modo crear spot</button>
-                  <button id="btnMoveMode" class="btn btn--secondary" type="button">Mover spot seleccionado</button>
-                  <button id="btnDeleteSpot" class="btn btn--secondary" type="button">Eliminar spot</button>
-                </div>
-                <p class="hint">Haz click en el mapa para crear o mover spots (coordenadas normalizadas 0..1).</p>
-                <div class="map-wrap" id="mapWrap">
-                  <img id="mapImage" src="{{ map_image_url }}" alt="Mapa evento" />
-                </div>
-              </div>
+    <div>
+      <div class="field">
+        <label for="stallSelect">Tienda</label>
+        <select class="input" id="stallSelect"><option value="">Selecciona tienda</option></select>
+      </div>
+      <div class="field">
+        <label for="vendorSelect">Agregar vendedor a tienda</label>
+        <select class="input" id="vendorSelect"><option value="">Selecciona vendedor</option></select>
+      </div>
+      <div class="actions-row mb-12">
+        <button id="btnAssignSpot" class="btn btn--secondary" type="button">Asignar spot seleccionado</button>
+        <button id="btnAddVendor" class="btn btn--secondary" type="button">Agregar vendedor</button>
+      </div>
+      <div id="apiMessage" class="hint"></div>
 
-              <div>
-                <div class="field">
-                  <label for="stallSelect">Tienda</label>
-                  <select class="input" id="stallSelect">
-                    <option value="">Selecciona tienda</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="vendorSelect">Agregar vendedor a tienda</label>
-                  <select class="input" id="vendorSelect">
-                    <option value="">Selecciona vendedor</option>
-                  </select>
-                </div>
-                <div class="actions-row" style="margin-bottom: 12px;">
-                  <button id="btnAssignSpot" class="btn btn--secondary" type="button">Asignar spot seleccionado</button>
-                  <button id="btnAddVendor" class="btn btn--secondary" type="button">Agregar vendedor</button>
-                </div>
-                <div id="apiMessage" class="hint"></div>
-
-                <h3 class="page-title" style="font-size:18px; margin-top:12px;">Tiendas del evento</h3>
-                <div class="staff-mini-list" id="stallList"></div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
+      <h3 class="page-title mt-12">Tiendas del evento</h3>
+      <div class="staff-mini-list" id="stallList"></div>
     </div>
   </div>
+</section>
+{% endblock %}
 
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-  <script>
-    const eventId = {{ event.id }};
-    const mapWrap = document.getElementById('mapWrap');
-    const mapImage = document.getElementById('mapImage');
-    const stallSelect = document.getElementById('stallSelect');
-    const vendorSelect = document.getElementById('vendorSelect');
-    const stallList = document.getElementById('stallList');
-    const apiMessage = document.getElementById('apiMessage');
-    const spotCount = document.getElementById('spotCount');
+{% block extra_js %}
+<script>
+  const eventId = {{ event.id }};
+  const mapWrap = document.getElementById('mapWrap');
+  const mapImage = document.getElementById('mapImage');
+  const stallSelect = document.getElementById('stallSelect');
+  const vendorSelect = document.getElementById('vendorSelect');
+  const stallList = document.getElementById('stallList');
+  const apiMessage = document.getElementById('apiMessage');
+  const spotCount = document.getElementById('spotCount');
 
-    let state = { spots: [], stalls: [], vendors: [], event: null };
-    let selectedSpotId = null;
-    let mode = 'idle';
+  let state = { spots: [], stalls: [], vendors: [], event: null };
+  let selectedSpotId = null;
+  let mode = 'idle';
 
-    function getCookie(name) {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-      return '';
-    }
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  }
 
-    async function apiCall(url, method = 'GET', payload = null) {
-      const init = {
-        method,
-        headers: {
-          'X-CSRFToken': getCookie('csrftoken'),
-          'Accept': 'application/json'
-        }
-      };
-      if (payload !== null) {
-        init.headers['Content-Type'] = 'application/json';
-        init.body = JSON.stringify(payload);
+  async function apiCall(url, method = 'GET', payload = null) {
+    const init = {
+      method,
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Accept': 'application/json'
       }
-      const resp = await fetch(url, init);
-      const data = await resp.json();
-      if (!resp.ok || data.ok === false) {
-        throw new Error(data.error || 'Error en la operacion');
-      }
-      return data;
+    };
+    if (payload !== null) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(payload);
     }
-
-    function setMessage(text, isError = false) {
-      apiMessage.textContent = text;
-      apiMessage.style.color = isError ? '#b00020' : '#0f766e';
+    const resp = await fetch(url, init);
+    const data = await resp.json();
+    if (!resp.ok || data.ok === false) {
+      throw new Error(data.error || 'Error en la operacion');
     }
+    return data;
+  }
 
-    function clearMapSpots() {
-      mapWrap.querySelectorAll('.map-spot').forEach((el) => el.remove());
-    }
+  function setMessage(text, isError = false) {
+    apiMessage.textContent = text;
+    apiMessage.className = `hint ${isError ? 'text-error' : 'text-success'}`;
+  }
 
-    function renderMapSpots() {
-      clearMapSpots();
-      state.spots.forEach((spot) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `map-spot ${spot.stall_id ? 'assigned' : ''} ${spot.status === 'blocked' ? 'blocked' : ''}`;
-        if (spot.id === selectedSpotId) btn.classList.add('selected');
-        btn.style.left = `${spot.x * 100}%`;
-        btn.style.top = `${spot.y * 100}%`;
-        btn.textContent = spot.label;
-        btn.title = spot.stall_name ? `${spot.label} - ${spot.stall_name}` : spot.label;
-        btn.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          selectedSpotId = spot.id;
-          renderMapSpots();
-        });
-        mapWrap.appendChild(btn);
-      });
-      spotCount.textContent = String(state.spots.length);
-    }
+  function clearMapSpots() {
+    mapWrap.querySelectorAll('.map-spot').forEach((el) => el.remove());
+  }
 
-    function renderStallOptions() {
-      stallSelect.innerHTML = '<option value="">Selecciona tienda</option>';
-      state.stalls.forEach((stall) => {
-        const option = document.createElement('option');
-        option.value = String(stall.id);
-        option.textContent = `${stall.name}${stall.assigned_spot_label ? ` (spot ${stall.assigned_spot_label})` : ''}`;
-        stallSelect.appendChild(option);
-      });
-    }
-
-    function renderVendorOptions() {
-      vendorSelect.innerHTML = '<option value="">Selecciona vendedor</option>';
-      state.vendors.forEach((vendor) => {
-        const option = document.createElement('option');
-        option.value = String(vendor.user_id);
-        option.textContent = `${vendor.username}${vendor.matricula ? ` (${vendor.matricula})` : ''}`;
-        vendorSelect.appendChild(option);
-      });
-    }
-
-    function renderStallList() {
-      stallList.innerHTML = '';
-      state.stalls.forEach((stall) => {
-        const item = document.createElement('div');
-        item.className = 'staff-mini-item';
-        const members = stall.members.map((m) => `${m.username} (${m.role})`).join(', ') || 'Sin vendedores';
-        item.innerHTML = `<div><strong>${stall.name}</strong></div><div class="hint">${stall.code}</div><div class="hint">Spot: ${stall.assigned_spot_label || 'Sin asignar'}</div><div class="hint">Vendedores: ${members}</div>`;
-        stallList.appendChild(item);
-      });
-    }
-
-    async function loadState() {
-      try {
-        const data = await apiCall(`/api/events/${eventId}/map/state`);
-        state = data;
+  function renderMapSpots() {
+    clearMapSpots();
+    state.spots.forEach((spot) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `map-spot ${spot.stall_id ? 'map-spot--assigned' : ''} ${spot.status === 'blocked' ? 'map-spot--blocked' : ''}`;
+      if (spot.id === selectedSpotId) btn.classList.add('selected');
+      btn.style.left = `${spot.x * 100}%`;
+      btn.style.top = `${spot.y * 100}%`;
+      btn.textContent = spot.label;
+      btn.title = spot.stall_name ? `${spot.label} - ${spot.stall_name}` : spot.label;
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        selectedSpotId = spot.id;
         renderMapSpots();
-        renderStallOptions();
-        renderVendorOptions();
-        renderStallList();
-      } catch (err) {
-        setMessage(err.message, true);
-      }
+      });
+      mapWrap.appendChild(btn);
+    });
+    spotCount.textContent = String(state.spots.length);
+  }
+
+  function renderStallOptions() {
+    stallSelect.innerHTML = '<option value="">Selecciona tienda</option>';
+    state.stalls.forEach((stall) => {
+      const option = document.createElement('option');
+      option.value = String(stall.id);
+      option.textContent = `${stall.name}${stall.assigned_spot_label ? ` (spot ${stall.assigned_spot_label})` : ''}`;
+      stallSelect.appendChild(option);
+    });
+  }
+
+  function renderVendorOptions() {
+    vendorSelect.innerHTML = '<option value="">Selecciona vendedor</option>';
+    state.vendors.forEach((vendor) => {
+      const option = document.createElement('option');
+      option.value = String(vendor.user_id);
+      option.textContent = `${vendor.username}${vendor.matricula ? ` (${vendor.matricula})` : ''}`;
+      vendorSelect.appendChild(option);
+    });
+  }
+
+  function renderStallList() {
+    stallList.innerHTML = '';
+    state.stalls.forEach((stall) => {
+      const item = document.createElement('div');
+      item.className = 'staff-mini-item';
+      const members = stall.members.map((m) => `${m.username} (${m.role})`).join(', ') || 'Sin vendedores';
+      item.innerHTML = `<div><strong>${stall.name}</strong></div><div class="hint">${stall.code}</div><div class="hint">Spot: ${stall.assigned_spot_label || 'Sin asignar'}</div><div class="hint">Vendedores: ${members}</div>`;
+      stallList.appendChild(item);
+    });
+  }
+
+  async function loadState() {
+    try {
+      const data = await apiCall(`/api/events/${eventId}/map/state`);
+      state = data;
+      renderMapSpots();
+      renderStallOptions();
+      renderVendorOptions();
+      renderStallList();
+    } catch (err) {
+      setMessage(err.message, true);
     }
+  }
 
-    function getClickCoordinates(ev) {
-      const rect = mapImage.getBoundingClientRect();
-      const x = (ev.clientX - rect.left) / rect.width;
-      const y = (ev.clientY - rect.top) / rect.height;
-      return {
-        x: Math.max(0, Math.min(1, x)),
-        y: Math.max(0, Math.min(1, y)),
-      };
+  function getClickCoordinates(ev) {
+    const rect = mapImage.getBoundingClientRect();
+    const x = (ev.clientX - rect.left) / rect.width;
+    const y = (ev.clientY - rect.top) / rect.height;
+    return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+  }
+
+  mapWrap.addEventListener('click', async (ev) => {
+    const coords = getClickCoordinates(ev);
+    try {
+      if (mode === 'create') {
+        await apiCall(`/api/events/${eventId}/map/spots`, 'POST', coords);
+        setMessage('Spot creado.');
+      } else if (mode === 'move' && selectedSpotId) {
+        await apiCall(`/api/events/${eventId}/map/spots/${selectedSpotId}`, 'PATCH', coords);
+        setMessage('Spot movido.');
+      }
+      await loadState();
+    } catch (err) {
+      setMessage(err.message, true);
     }
+  });
 
-    mapWrap.addEventListener('click', async (ev) => {
-      const coords = getClickCoordinates(ev);
-      try {
-        if (mode === 'create') {
-          await apiCall(`/api/events/${eventId}/map/spots`, 'POST', coords);
-          setMessage('Spot creado.');
-        } else if (mode === 'move' && selectedSpotId) {
-          await apiCall(`/api/events/${eventId}/map/spots/${selectedSpotId}`, 'PATCH', coords);
-          setMessage('Spot movido.');
-        }
-        await loadState();
-      } catch (err) {
-        setMessage(err.message, true);
-      }
-    });
+  document.getElementById('btnCreateMode').addEventListener('click', () => {
+    mode = mode === 'create' ? 'idle' : 'create';
+    setMessage(mode === 'create' ? 'Modo crear activo.' : 'Modo crear desactivado.');
+  });
 
-    document.getElementById('btnCreateMode').addEventListener('click', () => {
-      mode = mode === 'create' ? 'idle' : 'create';
-      setMessage(mode === 'create' ? 'Modo crear activo.' : 'Modo crear desactivado.');
-    });
+  document.getElementById('btnMoveMode').addEventListener('click', () => {
+    mode = mode === 'move' ? 'idle' : 'move';
+    setMessage(mode === 'move' ? 'Modo mover activo. Selecciona un spot y luego click en mapa.' : 'Modo mover desactivado.');
+  });
 
-    document.getElementById('btnMoveMode').addEventListener('click', () => {
-      mode = mode === 'move' ? 'idle' : 'move';
-      setMessage(mode === 'move' ? 'Modo mover activo. Selecciona un spot y luego click en mapa.' : 'Modo mover desactivado.');
-    });
+  document.getElementById('btnDeleteSpot').addEventListener('click', async () => {
+    if (!selectedSpotId) {
+      setMessage('Selecciona un spot para eliminar.', true);
+      return;
+    }
+    try {
+      await apiCall(`/api/events/${eventId}/map/spots/${selectedSpotId}`, 'DELETE');
+      selectedSpotId = null;
+      setMessage('Spot eliminado.');
+      await loadState();
+    } catch (err) {
+      setMessage(err.message, true);
+    }
+  });
 
-    document.getElementById('btnDeleteSpot').addEventListener('click', async () => {
-      if (!selectedSpotId) {
-        setMessage('Selecciona un spot para eliminar.', true);
-        return;
-      }
-      try {
-        await apiCall(`/api/events/${eventId}/map/spots/${selectedSpotId}`, 'DELETE');
-        selectedSpotId = null;
-        setMessage('Spot eliminado.');
-        await loadState();
-      } catch (err) {
-        setMessage(err.message, true);
-      }
-    });
+  document.getElementById('btnAssignSpot').addEventListener('click', async () => {
+    const stallId = stallSelect.value;
+    if (!stallId || !selectedSpotId) {
+      setMessage('Selecciona tienda y spot.', true);
+      return;
+    }
+    try {
+      await apiCall(`/api/events/${eventId}/stalls/${stallId}/assign-spot`, 'POST', { spot_id: selectedSpotId });
+      setMessage('Spot asignado a tienda.');
+      await loadState();
+    } catch (err) {
+      setMessage(err.message, true);
+    }
+  });
 
-    document.getElementById('btnAssignSpot').addEventListener('click', async () => {
-      const stallId = stallSelect.value;
-      if (!stallId || !selectedSpotId) {
-        setMessage('Selecciona tienda y spot.', true);
-        return;
-      }
-      try {
-        await apiCall(`/api/events/${eventId}/stalls/${stallId}/assign-spot`, 'POST', { spot_id: selectedSpotId });
-        setMessage('Spot asignado a tienda.');
-        await loadState();
-      } catch (err) {
-        setMessage(err.message, true);
-      }
-    });
+  document.getElementById('btnAddVendor').addEventListener('click', async () => {
+    const stallId = stallSelect.value;
+    const vendorId = vendorSelect.value;
+    if (!stallId || !vendorId) {
+      setMessage('Selecciona tienda y vendedor.', true);
+      return;
+    }
+    try {
+      await apiCall(`/api/events/${eventId}/stalls/${stallId}/add-vendor`, 'POST', { vendor_user_id: vendorId });
+      setMessage('Vendedor agregado.');
+      await loadState();
+    } catch (err) {
+      setMessage(err.message, true);
+    }
+  });
 
-    document.getElementById('btnAddVendor').addEventListener('click', async () => {
-      const stallId = stallSelect.value;
-      const vendorId = vendorSelect.value;
-      if (!stallId || !vendorId) {
-        setMessage('Selecciona tienda y vendedor.', true);
-        return;
-      }
-      try {
-        await apiCall(`/api/events/${eventId}/stalls/${stallId}/add-vendor`, 'POST', { vendor_user_id: vendorId });
-        setMessage('Vendedor agregado.');
-        await loadState();
-      } catch (err) {
-        setMessage(err.message, true);
-      }
-    });
-
-    loadState();
-  </script>
-</body>
-</html>
+  loadState();
+</script>
+{% endblock %}

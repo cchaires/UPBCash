@@ -1,95 +1,31 @@
-{% load static %}
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPBCash - Historial de ventas</title>
-  <link rel="stylesheet" href="{% static 'core/css/styles_vendedor_layout.css' %}" />
-</head>
-<body>
-  <div class="page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">
-          <img class="brand__logo" src="{% static 'core/img/imgupbcash-logo-c.png' %}" alt="UPBCash" />
-        </div>
+{% extends 'core/layouts/vendor_shell.html' %}
 
-        <nav class="nav" aria-label="Secciones del vendedor">
-          <a class="nav__item" href="{% url 'vendedor' %}">
-            <span class="nav__icon">🏠</span><span>Inicio</span>
-          </a>
-          <a class="nav__item" href="{% url 'vendedor_productos' %}">
-            <span class="nav__icon">🍽️</span><span>Productos</span>
-          </a>
-          <a class="nav__item nav__item--active" href="{% url 'vendedor_ventas' %}">
-            <span class="nav__icon">📊</span><span>Ventas</span>
-          </a>
-          <a class="nav__item" href="{% url 'vendedor_mapa' %}">
-            <span class="nav__icon">🗺️</span><span>Mapa</span>
-          </a>
-        </nav>
+{% block title %}UPBCash - Historial de ventas{% endblock %}
 
-        <div class="sidebar__spacer"></div>
-
-        <div class="userbox">
-          <div class="userbox__avatar">👤</div>
-          <div class="userbox__info">
-            <div class="userbox__name">{{ user_display_name }}</div>
-            <div class="userbox__sub">Vendedor</div>
-          </div>
-          <button class="userbox__toggle" id="userToggle" aria-haspopup="true" aria-expanded="false" aria-label="Abrir menu de cuenta">▾</button>
-          <div class="userbox__menu" id="userMenu" role="menu" aria-hidden="true">
-            <a href="{% url 'cliente' %}" role="menuitem">Cliente</a>
-            {% if can_view_vendor %}
-            <a href="{% url 'vendedor' %}" role="menuitem">Vendedor</a>
-            {% endif %}
-            {% if can_view_staff %}
-            <a href="{% url 'staff_panel' %}" role="menuitem">Staff</a>
-            {% endif %}
-            <a href="{% url 'logout' %}" role="menuitem">Cerrar sesion</a>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="main__inner main__inner--scroll">
-          <header class="main__header">
-            <div class="title-block">
-              <h1>Historial de ventas</h1>
-              {% if assignment %}
-              <p>Ultimas ventas registradas para {{ assignment.stall.name }}.</p>
-              {% else %}
-              <p>No hay un puesto asignado para mostrar ventas.</p>
-              {% endif %}
-            </div>
-            <div class="status-pill">
-              {% if event %}{{ event.name }}{% else %}Sin evento activo{% endif %}
-            </div>
-          </header>
-
-          <section class="panel">
-            <div class="menu-grid">
-              {% for sale in sales_rows %}
-              <article class="menu-item">
-                <div class="item__name">Ticket #{{ sale.order_number }}</div>
-                <div class="item__desc">{{ sale.created_at|date:"d M H:i" }} · {{ sale.quantity }} articulos · {{ sale.status }}</div>
-                <div class="item__price"><span>${{ sale.total|floatformat:2 }}</span></div>
-              </article>
-              {% empty %}
-              <article class="menu-item">
-                <div class="item__name">Sin ventas registradas</div>
-                <div class="item__desc">Las ordenes procesadas por QR apareceran aqui.</div>
-                <div class="item__price"><span>$0.00</span></div>
-              </article>
-              {% endfor %}
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+{% block content %}
+<header class="main__header">
+  <div class="title-block">
+    <h1 class="page-title">Historial de ventas</h1>
+    {% if assignment %}<p class="page-subtitle">Ultimas ventas registradas para {{ assignment.stall.name }}.</p>{% else %}<p class="page-subtitle">No hay un puesto asignado para mostrar ventas.</p>{% endif %}
   </div>
+  <div class="status-pill">{% if event %}{{ event.name }}{% else %}Sin evento activo{% endif %}</div>
+</header>
 
-  <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
-</body>
-</html>
+<section class="panel">
+  <div class="menu-grid">
+    {% for sale in sales_rows %}
+    <article class="menu-item">
+      <div class="item__name">Ticket #{{ sale.order_number }}</div>
+      <div class="item__desc">{{ sale.created_at|date:"d M H:i" }} · {{ sale.quantity }} articulos · {{ sale.status }}</div>
+      <div class="item__price"><span>${{ sale.total|floatformat:2 }}</span></div>
+    </article>
+    {% empty %}
+    <article class="menu-item">
+      <div class="item__name">Sin ventas registradas</div>
+      <div class="item__desc">Las ordenes procesadas por QR apareceran aqui.</div>
+      <div class="item__price"><span>$0.00</span></div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
