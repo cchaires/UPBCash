@@ -66,138 +66,31 @@
               <p>Aun no tienes una tienda creada en el evento activo.</p>
               {% endif %}
             </div>
-            <div class="status-pill">
-              {% if event %}{{ event.name }}{% else %}Sin evento activo{% endif %}
+            <div class="header-actions">
+              <div class="status-pill">
+                {% if event %}{{ event.name }}{% else %}Sin evento activo{% endif %}
+              </div>
+              {% if assignment %}
+              <button class="btn btn--primary" type="button" id="openProductModal">Agregar producto</button>
+              {% else %}
+              <a class="btn btn--secondary" href="{% url 'vendedor_tienda' %}">Crear tienda</a>
+              {% endif %}
             </div>
           </header>
 
-          <section class="panel">
-            <div class="panel__title">
-              <h2>Imagen de tienda</h2>
-            </div>
-            {% if assignment %}
-            <form method="post" action="{% url 'vendedor_productos' %}" enctype="multipart/form-data" class="form form--wide">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="update_stall_image" />
-              <div class="field">
-                <label for="stall_image">Imagen principal de la tienda</label>
-                <input class="input" id="stall_image" name="stall_image" type="file" accept="image/*" />
-                {% if stall_image_url %}
-                <div style="margin-top: 8px;">
-                  <img src="{{ stall_image_url }}" alt="Imagen de la tienda" style="max-width: 220px; border-radius: 10px;" />
-                </div>
-                <label class="inline-check"><input type="checkbox" name="remove_stall_image" /> Quitar imagen actual</label>
-                {% endif %}
-              </div>
-              <div class="actions-row">
-                <button class="btn btn--secondary" type="submit">Guardar imagen de tienda</button>
-              </div>
-            </form>
-            {% else %}
-            <p class="item__desc">Necesitas crear tu tienda para gestionar su imagen.</p>
-            {% endif %}
+          {% if messages %}
+          <section class="panel panel--messages">
+            {% for message in messages %}
+            <p class="flash flash--{{ message.tags|default:'info' }}">{{ message }}</p>
+            {% endfor %}
           </section>
-
-          <section class="panel" style="margin-top: 16px;">
-            <div class="panel__title">
-              <h2>{% if form_product %}Editar producto{% else %}Agregar nuevo producto{% endif %}</h2>
-            </div>
-
-            {% if messages %}
-              {% for message in messages %}
-                <p class="helper" style="margin: 0 0 12px; color:{% if message.tags == 'error' %}#b00020{% elif message.tags == 'warning' %}#7a5200{% else %}#2f8f5b{% endif %};">{{ message }}</p>
-              {% endfor %}
-            {% endif %}
-
-            {% if assignment %}
-            <form method="post" action="{% url 'vendedor_productos' %}" enctype="multipart/form-data" class="form form--wide product-form-grid">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="save_product" />
-              {% if form_product %}<input type="hidden" name="product_id" value="{{ form_product.id }}" />{% endif %}
-
-              <div class="field">
-                <label for="display_name">Nombre visible</label>
-                <input class="input" id="display_name" name="display_name" type="text" maxlength="120" value="{{ form_product.display_name|default:'' }}" required />
-              </div>
-
-              <div class="field">
-                <label for="description">Descripcion</label>
-                <input class="input" id="description" name="description" type="text" maxlength="240" value="{% if form_product %}{{ form_product.catalog_product.description }}{% endif %}" />
-              </div>
-
-              <div class="field">
-                <label for="item_nature">Tipo contable</label>
-                <select class="input" id="item_nature" name="item_nature" required>
-                  {% for value, label in item_nature_options %}
-                  <option value="{{ value }}" {% if value == selected_item_nature %}selected{% endif %}>{{ label }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="category_id">Categoria</label>
-                <select class="input" id="category_id" name="category_id" required>
-                  <option value="">Selecciona categoria</option>
-                  {% for category in category_options %}
-                  <option value="{{ category.id }}" {% if selected_category_id == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="subcategory_id">Subcategoria</label>
-                <select class="input" id="subcategory_id" name="subcategory_id" required>
-                  <option value="">Selecciona subcategoria</option>
-                  {% for subcategory in subcategory_options %}
-                  <option value="{{ subcategory.id }}" {% if selected_subcategory_id == subcategory.id|stringformat:'s' %}selected{% endif %}>{{ subcategory.category.name }} · {{ subcategory.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="price_ucoin">Precio de venta (UCoin)</label>
-                <input class="input" id="price_ucoin" name="price_ucoin" type="number" min="0" step="0.01" value="{{ form_product.price_ucoin|default:'' }}" required />
-              </div>
-
-              <div class="field">
-                <label for="cost_ucoin">Costo unitario (UCoin)</label>
-                <input class="input" id="cost_ucoin" name="cost_ucoin" type="number" min="0" step="0.01" value="{{ form_product.cost_ucoin|default:'0.00' }}" required />
-              </div>
-
-              <div class="field">
-                <label for="stock_qty">Stock inventariable</label>
-                <input class="input" id="stock_qty" name="stock_qty" type="number" min="0" step="1" value="{{ form_product.stock_qty|default:'' }}" />
-              </div>
-
-              <div class="field">
-                <label for="image">Imagen del producto</label>
-                <input class="input" id="image" name="image" type="file" accept="image/*" />
-                {% if form_product and form_product.image %}
-                <label class="inline-check"><input type="checkbox" name="remove_image" /> Quitar imagen actual</label>
-                {% endif %}
-              </div>
-
-              <div class="field field--inline">
-                <label class="inline-check"><input type="checkbox" name="is_active" {% if form_product %}{% if form_product.is_active %}checked{% endif %}{% else %}checked{% endif %} /> Producto activo</label>
-              </div>
-
-              <div class="actions-row">
-                <button class="btn btn--primary" type="submit">{% if form_product %}Guardar cambios{% else %}Agregar producto{% endif %}</button>
-                {% if form_product %}
-                <a class="btn btn--secondary" href="{% url 'vendedor_productos' %}">Cancelar edicion</a>
-                {% endif %}
-              </div>
-            </form>
-            {% else %}
-            <p class="item__desc">Primero crea tu tienda para habilitar el catalogo de productos.</p>
-            <a class="btn btn--secondary" href="{% url 'vendedor_tienda' %}">Crear tienda</a>
-            {% endif %}
-          </section>
+          {% endif %}
 
           <section class="panel" style="margin-top: 16px;">
             <div class="panel__title">
               <h2>Productos publicados</h2>
             </div>
+            {% if assignment %}
             <div class="menu-grid">
               {% for product in stall_products %}
               <article class="menu-item">
@@ -222,17 +115,243 @@
               <article class="menu-item">
                 <div class="item__photo item__photo--combo">Sin menu</div>
                 <div class="item__name">No hay productos publicados</div>
-                <div class="item__desc">Usa el formulario superior para cargar tu primer producto.</div>
+                <div class="item__desc">Usa el boton Agregar producto para cargar tu primer producto.</div>
                 <div class="item__price"><span>Sin datos</span><span class="item__badge">--</span></div>
               </article>
               {% endfor %}
             </div>
+            {% else %}
+            <p class="item__desc">Primero crea tu tienda para habilitar el catalogo de productos.</p>
+            <a class="btn btn--secondary" href="{% url 'vendedor_tienda' %}">Crear tienda</a>
+            {% endif %}
           </section>
         </div>
       </main>
     </div>
   </div>
 
+  {% if assignment %}
+  <div class="modal-backdrop" id="productModalBackdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+      <div class="modal-card__header">
+        <h2 id="productModalTitle">{% if form_product %}Editar producto{% else %}Agregar producto{% endif %}</h2>
+        <button type="button" class="modal-card__close" id="closeProductModal" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-card__body">
+        <form method="post" action="{% url 'vendedor_productos' %}" enctype="multipart/form-data" class="form form--wide product-form-grid" id="productFormModal">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_product" />
+          {% if form_product %}<input type="hidden" name="product_id" value="{{ form_product.id }}" />{% endif %}
+
+          <div class="field">
+            <label for="display_name">Nombre visible</label>
+            <input class="input" id="display_name" name="display_name" type="text" maxlength="120" value="{{ form_product.display_name|default:'' }}" required />
+          </div>
+
+          <div class="field">
+            <label for="description">Descripcion</label>
+            <input class="input" id="description" name="description" type="text" maxlength="240" value="{% if form_product %}{{ form_product.catalog_product.description }}{% endif %}" />
+          </div>
+
+          <div class="field">
+            <label for="item_nature">Tipo contable</label>
+            <select class="input" id="item_nature" name="item_nature" required>
+              {% for value, label in item_nature_options %}
+              <option value="{{ value }}" {% if value == selected_item_nature %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="category_id">Categoria</label>
+            <select class="input" id="category_id" name="category_id" required>
+              <option value="">Selecciona categoria</option>
+              {% for category in category_options %}
+              <option value="{{ category.id }}" {% if selected_category_id == category.id|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="subcategory_id">Subcategoria</label>
+            <select class="input" id="subcategory_id" name="subcategory_id" required>
+              <option value="">Selecciona subcategoria</option>
+              {% for subcategory in subcategory_options %}
+              <option
+                value="{{ subcategory.id }}"
+                data-category-id="{{ subcategory.category_id }}"
+                {% if selected_subcategory_id == subcategory.id|stringformat:'s' %}selected{% endif %}
+              >{{ subcategory.category.name }} · {{ subcategory.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="price_ucoin">Precio de venta (UCoin)</label>
+            <input class="input" id="price_ucoin" name="price_ucoin" type="number" min="0" step="0.01" value="{{ form_product.price_ucoin|default:'' }}" required />
+          </div>
+
+          <div class="field">
+            <label for="cost_ucoin">Costo unitario (UCoin)</label>
+            <input class="input" id="cost_ucoin" name="cost_ucoin" type="number" min="0" step="0.01" value="{{ form_product.cost_ucoin|default:'0.00' }}" required />
+          </div>
+
+          <div class="field">
+            <label for="stock_qty">Stock inventariable</label>
+            <input class="input" id="stock_qty" name="stock_qty" type="number" min="0" step="1" value="{{ form_product.stock_qty|default:'' }}" />
+            <span class="item__desc" id="stock_qty_hint">Este campo aplica solo para productos inventariables.</span>
+          </div>
+
+          <div class="field">
+            <label for="image">Imagen del producto</label>
+            <input class="input" id="image" name="image" type="file" accept="image/*" />
+            {% if form_product and form_product.image %}
+            <label class="inline-check"><input type="checkbox" name="remove_image" /> Quitar imagen actual</label>
+            {% endif %}
+          </div>
+
+          <div class="field field--inline">
+            <label class="inline-check"><input type="checkbox" name="is_active" {% if form_product %}{% if form_product.is_active %}checked{% endif %}{% else %}checked{% endif %} /> Producto activo</label>
+          </div>
+
+          <div class="actions-row modal-card__actions">
+            <button class="btn btn--primary" type="submit">{% if form_product %}Guardar cambios{% else %}Agregar producto{% endif %}</button>
+            <button class="btn btn--secondary" type="button" id="cancelProductModal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <script src="{% static 'core/js/dropdown_cliente.js' %}"></script>
+  <script>
+    (function () {
+      const modalBackdrop = document.getElementById("productModalBackdrop");
+      const openModalButton = document.getElementById("openProductModal");
+      const closeModalButton = document.getElementById("closeProductModal");
+      const cancelModalButton = document.getElementById("cancelProductModal");
+
+      function clearModalQueryParams() {
+        const url = new URL(window.location.href);
+        const hadEdit = url.searchParams.has("edit");
+        const hadOpenModal = url.searchParams.has("open_modal");
+        if (!hadEdit && !hadOpenModal) {
+          return;
+        }
+        url.searchParams.delete("edit");
+        url.searchParams.delete("open_modal");
+        const nextUrl = url.search ? `${url.pathname}${url.search}${url.hash}` : `${url.pathname}${url.hash}`;
+        window.history.replaceState({}, "", nextUrl);
+      }
+
+      function openModal() {
+        if (!modalBackdrop) {
+          return;
+        }
+        modalBackdrop.hidden = false;
+        modalBackdrop.classList.add("is-open");
+        document.body.classList.add("modal-open");
+      }
+
+      function closeModal() {
+        if (!modalBackdrop) {
+          return;
+        }
+        modalBackdrop.classList.remove("is-open");
+        modalBackdrop.hidden = true;
+        document.body.classList.remove("modal-open");
+        clearModalQueryParams();
+      }
+
+      if (openModalButton) {
+        openModalButton.addEventListener("click", openModal);
+      }
+      if (closeModalButton) {
+        closeModalButton.addEventListener("click", closeModal);
+      }
+      if (cancelModalButton) {
+        cancelModalButton.addEventListener("click", closeModal);
+      }
+      if (modalBackdrop) {
+        modalBackdrop.addEventListener("click", function (event) {
+          if (event.target === modalBackdrop) {
+            closeModal();
+          }
+        });
+      }
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && modalBackdrop && !modalBackdrop.hidden) {
+          closeModal();
+        }
+      });
+
+      const searchParams = new URLSearchParams(window.location.search);
+      if (modalBackdrop && (searchParams.get("open_modal") === "1" || searchParams.has("edit"))) {
+        openModal();
+      }
+
+      const categorySelect = document.getElementById("category_id");
+      const subcategorySelect = document.getElementById("subcategory_id");
+      const itemNatureSelect = document.getElementById("item_nature");
+      const stockQtyInput = document.getElementById("stock_qty");
+      const stockQtyHint = document.getElementById("stock_qty_hint");
+
+      if (!categorySelect || !subcategorySelect || !itemNatureSelect || !stockQtyInput) {
+        return;
+      }
+
+      const allSubcategoryOptions = Array.from(subcategorySelect.options);
+
+      function syncSubcategoryOptions() {
+        const selectedCategoryId = categorySelect.value;
+        const currentSubcategoryId = subcategorySelect.value;
+        let currentStillValid = false;
+
+        allSubcategoryOptions.forEach((option, index) => {
+          if (index === 0) {
+            option.hidden = false;
+            option.disabled = false;
+            return;
+          }
+          const optionCategoryId = option.dataset.categoryId || "";
+          const shouldShow = selectedCategoryId && optionCategoryId === selectedCategoryId;
+          option.hidden = !shouldShow;
+          option.disabled = !shouldShow;
+          if (shouldShow && option.value === currentSubcategoryId) {
+            currentStillValid = true;
+          }
+        });
+
+        if (!currentStillValid) {
+          subcategorySelect.value = "";
+        }
+      }
+
+      function syncStockFieldState() {
+        const isNoInventoriable = itemNatureSelect.value === "no_inventoriable";
+        stockQtyInput.disabled = isNoInventoriable;
+        if (isNoInventoriable) {
+          stockQtyInput.value = "";
+          stockQtyInput.placeholder = "No aplica para tipo no inventariable";
+          if (stockQtyHint) {
+            stockQtyHint.textContent = "Deshabilitado porque el item es no inventariable.";
+          }
+        } else {
+          stockQtyInput.placeholder = "";
+          if (stockQtyHint) {
+            stockQtyHint.textContent = "Este campo aplica solo para productos inventariables.";
+          }
+        }
+      }
+
+      categorySelect.addEventListener("change", syncSubcategoryOptions);
+      itemNatureSelect.addEventListener("change", syncStockFieldState);
+
+      syncSubcategoryOptions();
+      syncStockFieldState();
+    })();
+  </script>
 </body>
 </html>

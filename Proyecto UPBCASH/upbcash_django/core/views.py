@@ -28,7 +28,6 @@ from events.authz import (
     PERM_ASSIGN_VENDOR_STALL,
     PERM_MANAGE_EVENT_PROFILES,
     PERM_MANAGE_VENDOR_PRODUCTS,
-    PERM_MANAGE_VENDOR_STALL_IMAGE,
     PERM_SOFT_DELETE_VENDOR_PRODUCTS,
     build_authz_snapshot,
     enforce_campaign_window_web,
@@ -1110,35 +1109,17 @@ def vendedor_productos(request):
         )
 
     if request.method == "POST":
+        def _redirect_product_form_error(raw_product_id=""):
+            base_url = reverse("vendedor_productos")
+            if str(raw_product_id).isdigit():
+                return redirect(f"{base_url}?edit={raw_product_id}")
+            return redirect(f"{base_url}?open_modal=1")
+
         if not event or not stall:
             messages.error(request, "Necesitas un evento activo y una tienda creada para administrar productos.")
             return redirect("vendedor_productos")
 
         action = (request.POST.get("action") or "save_product").strip()
-        if action == "update_stall_image":
-            if not has_permission(user=request.user, permission=PERM_MANAGE_VENDOR_STALL_IMAGE, snapshot=snapshot):
-                messages.error(request, "No cuentas con permisos para administrar la imagen de tienda.")
-                return redirect("vendedor_productos")
-
-            image_file = request.FILES.get("stall_image")
-            remove_stall_image = request.POST.get("remove_stall_image") == "on"
-
-            if image_file:
-                stall.image = image_file
-                stall.save(update_fields=["image"])
-                messages.success(request, "Imagen de tienda actualizada.")
-                return redirect("vendedor_productos")
-
-            if remove_stall_image and stall.image:
-                stall.image.delete(save=False)
-                stall.image = None
-                stall.save(update_fields=["image"])
-                messages.success(request, "Imagen de tienda eliminada.")
-                return redirect("vendedor_productos")
-
-            messages.info(request, "No se detectaron cambios para la imagen de tienda.")
-            return redirect("vendedor_productos")
-
         if action == "delete_product":
             if not has_permission(user=request.user, permission=PERM_SOFT_DELETE_VENDOR_PRODUCTS, snapshot=snapshot):
                 messages.error(request, "No cuentas con permisos para desactivar productos.")
@@ -1201,40 +1182,40 @@ def vendedor_productos(request):
 
         if not display_name:
             messages.error(request, "Ingresa el nombre del producto.")
-            return redirect("vendedor_productos")
+            return _redirect_product_form_error(product_id)
         if item_nature not in {ItemNature.INVENTORIABLE, ItemNature.NO_INVENTORIABLE}:
             messages.error(request, "Selecciona un tipo de item valido.")
-            return redirect("vendedor_productos")
+            return _redirect_product_form_error(product_id)
         if price_ucoin is None:
             messages.error(request, "Ingresa un precio valido.")
-            return redirect("vendedor_productos")
+            return _redirect_product_form_error(product_id)
         if cost_ucoin is None:
             messages.error(request, "Ingresa un costo valido.")
-            return redirect("vendedor_productos")
+            return _redirect_product_form_error(product_id)
 
         category = ProductCategory.objects.filter(id=category_id, is_active=True).first()
         subcategory = ProductSubcategory.objects.filter(id=subcategory_id, is_active=True).first()
         if not category or not subcategory:
             messages.error(request, "Selecciona categoria y subcategoria.")
-            return redirect("vendedor_productos")
+            return _redirect_product_form_error(product_id)
         if subcategory.category_id != category.id:
             messages.error(request, "La subcategoria no corresponde con la categoria seleccionada.")
-            return redirect("vendedor_productos")
+            return _redirect_product_form_error(product_id)
 
         stock_qty = None
         if item_nature == ItemNature.INVENTORIABLE:
             if stock_qty_raw:
                 if not stock_qty_raw.isdigit():
                     messages.error(request, "El stock debe ser un numero entero.")
-                    return redirect("vendedor_productos")
+                    return _redirect_product_form_error(product_id)
                 stock_qty = int(stock_qty_raw)
             elif not target_product:
                 messages.error(request, "El stock inicial es obligatorio para productos inventariables.")
-                return redirect("vendedor_productos")
+                return _redirect_product_form_error(product_id)
 
             if not target_product and (stock_qty is None or stock_qty <= 0):
                 messages.error(request, "El stock inicial debe ser mayor a 0.")
-                return redirect("vendedor_productos")
+                return _redirect_product_form_error(product_id)
 
         if cost_ucoin > price_ucoin:
             messages.warning(request, "Advertencia: el costo unitario es mayor al precio de venta.")
@@ -1292,7 +1273,6 @@ def vendedor_productos(request):
         "user_display_name": _user_display_name(request.user),
         "event": event,
         "assignment": assignment,
-        "stall_image_url": stall.image.url if stall and stall.image else "",
         "stall_products": _vendor_products_for_stall(event, stall),
         "category_options": category_options,
         "subcategory_options": subcategory_options,
@@ -1347,6 +1327,39 @@ def vendedor_mapa(request):
         return role_redirect
 
     assignment = _vendor_assignment(event, request.user)
+    own_spot_id = assignment.spot.id if assignment and getattr(assignment, "spot", None) else None
+
+    spot_assignments = {}
+    if event:
+        spot_assignments = {
+            row.spot_id: row
+            for row in StallLocationAssignment.objects.select_related("stall").filter(event=event)
+        }
+
+    map_spots = []
+    if event:
+        for spot in (
+            MapSpot.objects.select_related("zone")
+            .filter(event=event)
+            .order_by("zone__sort_order", "label", "id")
+        ):
+            location = spot_assignments.get(spot.id)
+            x_percent = max(0.0, min(100.0, float(spot.x) * 100))
+            y_percent = max(0.0, min(100.0, float(spot.y) * 100))
+            map_spots.append(
+                {
+                    "id": spot.id,
+                    "label": spot.label,
+                    "status": spot.status,
+                    "x_percent": x_percent,
+                    "y_percent": y_percent,
+                    "zone_name": spot.zone.name if spot.zone else "",
+                    "stall_name": location.stall.name if location else "",
+                    "is_assigned": location is not None,
+                    "is_vendor_spot": own_spot_id == spot.id,
+                }
+            )
+
     return render(
         request,
         "core/vendedor_mapa.html",
@@ -1354,6 +1367,9 @@ def vendedor_mapa(request):
             "user_display_name": _user_display_name(request.user),
             "event": event,
             "assignment": assignment,
+            "own_spot_id": own_spot_id,
+            "map_spots": map_spots,
+            "map_image_url": event.map_image.url if event and event.map_image else static("core/img/mapa_upbc.png"),
         },
     )
 

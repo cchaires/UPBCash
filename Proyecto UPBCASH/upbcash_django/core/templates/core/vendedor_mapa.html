@@ -56,11 +56,11 @@
       </aside>
 
       <main class="main">
-        <div class="main__inner">
+        <div class="main__inner main__inner--scroll">
           <section class="panel panel--croquis">
             <div class="panel__title">
               <h2>Croquis del estacionamiento</h2>
-              <span class="status-pill">Puesto asignado</span>
+              <span class="status-pill">Espacios del evento</span>
             </div>
 
             <div class="croquis-wrap">
@@ -83,30 +83,27 @@
               </div>
 
               <div class="map-card">
-                <div class="parking-grid" aria-label="Croquis del estacionamiento">
-                  <div class="space">A-10</div>
-                  <div class="space">A-11</div>
-                  <div class="space">A-12</div>
-                  <div class="space">A-13</div>
-                  <div class="space">A-14</div>
-                  <div class="space">A-15</div>
-                  <div class="space">B-10</div>
-                  <div class="space">B-11</div>
-                  <div class="space is-vendor">B-12</div>
-                  <div class="space">B-13</div>
-                  <div class="space">B-14</div>
-                  <div class="space">B-15</div>
-                  <div class="space">C-10</div>
-                  <div class="space">C-11</div>
-                  <div class="space">C-12</div>
-                  <div class="space">C-13</div>
-                  <div class="space">C-14</div>
-                  <div class="space">C-15</div>
+                <div class="map-canvas" aria-label="Mapa del evento para vendedores">
+                  <img class="map-canvas__image" src="{{ map_image_url }}" alt="Mapa del evento" />
+                  {% for spot in map_spots %}
+                  <div
+                    class="map-spot-marker{% if spot.is_assigned %} map-spot-marker--assigned{% endif %}{% if spot.status == 'blocked' %} map-spot-marker--blocked{% endif %}{% if spot.is_vendor_spot %} map-spot-marker--vendor{% endif %}"
+                    style="left: {{ spot.x_percent }}%; top: {{ spot.y_percent }}%;"
+                    title="{{ spot.label }}{% if spot.stall_name %} · {{ spot.stall_name }}{% endif %}"
+                  >
+                    <span>{{ spot.label }}</span>
+                  </div>
+                  {% endfor %}
                 </div>
+                {% if not map_spots %}
+                <p class="item__desc" style="margin-top: 10px;">Aun no hay espacios configurados para este evento.</p>
+                {% endif %}
 
                 <div class="legend">
-                  <span><i class="vendor"></i>Tu puesto</span>
+                  <span><i class="vendor"></i>Tu espacio</span>
+                  <span><i class="assigned"></i>Asignado</span>
                   <span><i></i>Disponible</span>
+                  <span><i class="blocked"></i>Bloqueado</span>
                 </div>
               </div>
             </div>

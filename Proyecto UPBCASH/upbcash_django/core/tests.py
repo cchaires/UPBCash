@@ -173,7 +173,7 @@ class CoreV2ViewsTests(TestCase):
         product.refresh_from_db()
         self.assertFalse(product.is_active)
 
-    def test_vendor_can_update_and_remove_stall_image(self):
+    def test_vendor_can_update_and_remove_stall_image_from_tienda(self):
         vendor = self.user_model.objects.create_user(username="vendor-image", password="secret")
         staff = self.user_model.objects.create_user(username="staff-image", password="secret")
         stall = self._build_stall(code="stall-image", name="Puesto Image")
@@ -184,8 +184,13 @@ class CoreV2ViewsTests(TestCase):
         self.client.login(username="vendor-image", password="secret")
         upload = SimpleUploadedFile("stall.png", b"fake-image-content", content_type="image/png")
         response_upload = self.client.post(
-            reverse("vendedor_productos"),
-            {"action": "update_stall_image", "stall_image": upload},
+            reverse("vendedor_tienda"),
+            {
+                "name": stall.name,
+                "code": stall.code,
+                "description": stall.description,
+                "image": upload,
+            },
             follow=True,
         )
         self.assertEqual(response_upload.status_code, 200)
@@ -193,13 +198,96 @@ class CoreV2ViewsTests(TestCase):
         self.assertTrue(bool(stall.image))
 
         response_remove = self.client.post(
-            reverse("vendedor_productos"),
-            {"action": "update_stall_image", "remove_stall_image": "on"},
+            reverse("vendedor_tienda"),
+            {
+                "name": stall.name,
+                "code": stall.code,
+                "description": stall.description,
+                "remove_image": "on",
+            },
             follow=True,
         )
         self.assertEqual(response_remove.status_code, 200)
         stall.refresh_from_db()
         self.assertFalse(bool(stall.image))
+
+    def test_vendedor_productos_renders_add_button_and_modal(self):
+        vendor = self.user_model.objects.create_user(username="vendor-image-link", password="secret")
+        staff = self.user_model.objects.create_user(username="staff-image-link", password="secret")
+        stall = self._build_stall(code="stall-image-link", name="Puesto Image Link")
+        self._add_vendor_membership(stall=stall, vendor_user=vendor, staff_user=staff)
+        self._assign_stall_to_spot(stall=stall, staff_user=staff)
+        assign_group_to_user(event=self.event, user=vendor, group_name="vendedor")
+
+        self.client.login(username="vendor-image-link", password="secret")
+        response = self.client.get(reverse("vendedor_productos"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Agregar producto")
+        self.assertContains(response, 'id="openProductModal"')
+        self.assertContains(response, 'id="productModalBackdrop"')
+        self.assertNotContains(response, "La imagen de tienda solo se edita en la seccion")
+
+    def test_vendedor_productos_invalid_create_redirects_with_open_modal(self):
+        vendor = self.user_model.objects.create_user(username="vendor-modal", password="secret")
+        staff = self.user_model.objects.create_user(username="staff-modal", password="secret")
+        stall = self._build_stall(code="stall-modal", name="Puesto Modal")
+        self._add_vendor_membership(stall=stall, vendor_user=vendor, staff_user=staff)
+        self._assign_stall_to_spot(stall=stall, staff_user=staff)
+        assign_group_to_user(event=self.event, user=vendor, group_name="vendedor")
+
+        self.client.login(username="vendor-modal", password="secret")
+        response = self.client.post(
+            reverse("vendedor_productos"),
+            {
+                "action": "save_product",
+                "display_name": "",
+                "item_nature": ItemNature.INVENTORIABLE,
+                "category_id": str(self.category_food.id),
+                "subcategory_id": str(self.subcategory_snack.id),
+                "price_ucoin": "20.00",
+                "cost_ucoin": "5.00",
+                "stock_qty": "5",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('vendedor_productos')}?open_modal=1",
+            fetch_redirect_response=False,
+        )
+
+    def test_vendedor_productos_edit_query_keeps_modal_context(self):
+        vendor = self.user_model.objects.create_user(username="vendor-edit", password="secret")
+        staff = self.user_model.objects.create_user(username="staff-edit", password="secret")
+        stall = self._build_stall(code="stall-edit", name="Puesto Edit")
+        self._add_vendor_membership(stall=stall, vendor_user=vendor, staff_user=staff)
+        self._assign_stall_to_spot(stall=stall, staff_user=staff)
+        assign_group_to_user(event=self.event, user=vendor, group_name="vendedor")
+        catalog = CatalogProduct.objects.create(sku="edit-001", name="Editable")
+        product = StallProduct.objects.create(
+            event=self.event,
+            stall=stall,
+            catalog_product=catalog,
+            display_name="Producto editable",
+            item_nature=ItemNature.INVENTORIABLE,
+            category=self.category_food,
+            subcategory=self.subcategory_snack,
+            price_ucoin=Decimal("12.00"),
+            cost_ucoin=Decimal("4.00"),
+            stock_mode=StockMode.FINITE,
+            stock_qty=8,
+            is_active=True,
+        )
+
+        self.client.login(username="vendor-edit", password="secret")
+        response = self.client.get(reverse("vendedor_productos"), {"edit": product.id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context["form_product"])
+        self.assertEqual(response.context["form_product"].id, product.id)
+        self.assertContains(response, f'name=\"product_id\" value=\"{product.id}\"')
+        self.assertContains(response, 'searchParams.has(\"edit\")')
 
     def test_menu_post_adds_product_to_v2_cart(self):
         client_user = self.user_model.objects.create_user(username="buyer2", password="secret")
@@ -233,6 +321,63 @@ class CoreV2ViewsTests(TestCase):
         self.assertTrue(
             CommerceCartItem.objects.filter(event=self.event, user=client_user, stall_product=product).exists()
         )
+
+    def test_vendor_map_context_highlights_vendor_spot(self):
+        vendor = self.user_model.objects.create_user(username="vendor-map", password="secret")
+        staff_user = self.user_model.objects.create_user(username="staff-map", password="secret")
+        stall = self._build_stall(code="stall-map", name="Puesto Mapa")
+        self._add_vendor_membership(stall=stall, vendor_user=vendor, staff_user=staff_user)
+        vendor_assignment = self._assign_stall_to_spot(stall=stall, staff_user=staff_user)
+
+        extra_zone = MapZone.objects.create(event=self.event, name="Zona extra", sort_order=2)
+        MapSpot.objects.create(event=self.event, zone=extra_zone, label="EX-01", x=0.333, y=0.444, status="available")
+        assign_group_to_user(event=self.event, user=vendor, group_name="vendedor")
+
+        self.client.login(username="vendor-map", password="secret")
+        response = self.client.get(reverse("vendedor_mapa"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("map_spots", response.context)
+        self.assertIn("map_image_url", response.context)
+        self.assertEqual(response.context["own_spot_id"], vendor_assignment.spot_id)
+        self.assertTrue(any(row["is_vendor_spot"] for row in response.context["map_spots"]))
+        self.assertTrue(
+            any(
+                row["id"] == vendor_assignment.spot_id and row["is_vendor_spot"]
+                for row in response.context["map_spots"]
+            )
+        )
+
+    def test_vendor_map_context_without_spot(self):
+        vendor = self.user_model.objects.create_user(username="vendor-no-spot", password="secret")
+        staff_user = self.user_model.objects.create_user(username="staff-no-spot", password="secret")
+        stall = self._build_stall(code="stall-no-spot", name="Puesto sin spot")
+        self._add_vendor_membership(stall=stall, vendor_user=vendor, staff_user=staff_user)
+        zone = MapZone.objects.create(event=self.event, name="Zona sin asignar", sort_order=3)
+        MapSpot.objects.create(event=self.event, zone=zone, label="NS-01", x=0.2, y=0.3, status="available")
+        assign_group_to_user(event=self.event, user=vendor, group_name="vendedor")
+
+        self.client.login(username="vendor-no-spot", password="secret")
+        response = self.client.get(reverse("vendedor_mapa"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sin espacio asignado")
+        self.assertTrue(response.context["map_spots"])
+        self.assertFalse(any(row["is_vendor_spot"] for row in response.context["map_spots"]))
+
+    def test_vendor_map_uses_fallback_image_without_event_map(self):
+        vendor = self.user_model.objects.create_user(username="vendor-fallback-map", password="secret")
+        staff_user = self.user_model.objects.create_user(username="staff-fallback-map", password="secret")
+        stall = self._build_stall(code="stall-fallback", name="Puesto fallback")
+        self._add_vendor_membership(stall=stall, vendor_user=vendor, staff_user=staff_user)
+        self._assign_stall_to_spot(stall=stall, staff_user=staff_user)
+        assign_group_to_user(event=self.event, user=vendor, group_name="vendedor")
+
+        self.client.login(username="vendor-fallback-map", password="secret")
+        response = self.client.get(reverse("vendedor_mapa"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("core/img/mapa_upbc.png", response.context["map_image_url"])
 
 
 class StaffPanelAccessTests(TestCase):
