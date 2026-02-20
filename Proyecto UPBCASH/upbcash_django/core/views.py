@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 
+from accounting.models import TopupRecord
 from accounting.services import WalletService
 from commerce.models import CartItem as CommerceCartItem
 from commerce.models import OrderStatus, SalesOrder
@@ -37,7 +38,7 @@ from events.authz import (
 )
 from events.models import CampaignStatus, EventCampaign, EventMembership, EventUserGroup, ProfileType
 from events.services import ensure_user_client_membership, get_active_campaign, validate_campaign_windows
-from operations.models import StaffAuditLog
+from operations.models import StaffAuditLog, SupportTicket, SupportTicketType
 from operations.services import StaffOpsService, StaffPermissionError
 from stalls.models import (
     CatalogProduct,
@@ -54,19 +55,7 @@ from stalls.models import (
     StockMode,
 )
 
-from .models import (
-    Recharge,
-    RechargeIssue,
-    UserProfile,
-    Wallet,
-    WalletLedger,
-)
-
 logger = logging.getLogger(__name__)
-
-def _wallet_for(user):
-    wallet, _ = Wallet.objects.get_or_create(user=user)
-    return wallet
 
 
 def _parse_amount(raw_value):
@@ -77,6 +66,9 @@ def _parse_amount(raw_value):
         return Decimal(digits)
     except InvalidOperation:
         return Decimal("0")
+
+
+_TOPUP_PROVIDER = "PayPal"
 
 
 def _authenticate_by_identifier(request, identifier, password):
@@ -107,15 +99,6 @@ def _create_profile_and_wallet(
     invited_by_email="",
     invited_by_matricula="",
 ):
-    UserProfile.objects.create(
-        user=user,
-        account_type=account_type,
-        matricula=matricula,
-        phone=phone,
-        invited_by_email=invited_by_email,
-        invited_by_matricula=invited_by_matricula,
-    )
-    _wallet_for(user)
     profile_type = ProfileType.COMUNIDAD if account_type == "comunidad" else ProfileType.INVITADO
     ensure_user_client_membership(
         user=user,
@@ -124,52 +107,6 @@ def _create_profile_and_wallet(
         phone=phone,
         invited_by_email=invited_by_email,
         invited_by_matricula=invited_by_matricula,
-    )
-
-
-def _sync_legacy_wallet_balance_to_v2(*, user, legacy_balance):
-    event = get_active_campaign()
-    if not event:
-        return
-    WalletService.set_balance(event=event, user=user, balance=legacy_balance)
-
-
-def _sync_legacy_recharge_to_v2(*, user, recharge, amount):
-    event = get_active_campaign()
-    if not event:
-        return
-    WalletService.record_online_topup(
-        event=event,
-        user=user,
-        amount_ucoin=amount,
-        provider=recharge.payment_method or "PayPal",
-        provider_ref=recharge.code,
-        source_reference=f"legacy_recharge:{recharge.id}",
-    )
-
-
-def _append_wallet_ledger(
-    *,
-    wallet,
-    user,
-    movement_type,
-    amount,
-    balance_before,
-    balance_after,
-    reference_type="",
-    reference_id="",
-    description="",
-):
-    WalletLedger.objects.create(
-        wallet=wallet,
-        user=user,
-        movement_type=movement_type,
-        amount=amount,
-        balance_before=balance_before,
-        balance_after=balance_after,
-        reference_type=reference_type,
-        reference_id=reference_id,
-        description=description,
     )
 
 
@@ -190,7 +127,6 @@ def index(request):
         user = _authenticate_by_identifier(request, identifier, password)
         if user:
             login(request, user)
-            _wallet_for(user)
             ensure_user_client_membership(user=user)
             snapshot = build_authz_snapshot(user=user)
             if snapshot.event or snapshot.can_bypass_event_lock:
@@ -331,11 +267,11 @@ def registro_invitado(request):
 
 @login_required(login_url="index")
 def cliente(request):
-    _event, snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
     role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
-    saldo_actual = _wallet_for(request.user).balance
+    saldo_actual = WalletService.get_balance(event=event, user=request.user) if event else 0
     return render(request, "core/cliente.html", {"saldo_actual": saldo_actual})
 
 
@@ -677,11 +613,15 @@ def historial_compras(request):
 
 @login_required(login_url="index")
 def historial_recargas(request):
-    _event, snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
     role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
-    recargas = Recharge.objects.filter(user=request.user).order_by("-created_at")
+    recargas = (
+        TopupRecord.objects.filter(event=event, user=request.user).order_by("-created_at")
+        if event
+        else TopupRecord.objects.none()
+    )
     return render(
         request,
         "core/historial_recargas.html",
@@ -693,11 +633,13 @@ def historial_recargas(request):
 
 @login_required(login_url="index")
 def reporte_recarga(request, recarga_id):
-    _event, snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
     role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
-    recarga = get_object_or_404(Recharge, code=recarga_id.upper(), user=request.user)
+    recarga = get_object_or_404(
+        TopupRecord, provider_ref=recarga_id.upper(), user=request.user, event=event
+    )
     error_message = ""
 
     if request.method == "POST":
@@ -708,14 +650,15 @@ def reporte_recarga(request, recarga_id):
         if not email or not motivo or not detalle:
             error_message = "Completa correo, motivo y descripcion del problema."
         else:
-            RechargeIssue.objects.create(
-                recharge=recarga,
+            SupportTicket.objects.create(
+                event=event,
                 user=request.user,
-                email=email,
-                reason=motivo,
-                description=detalle,
+                ticket_type=SupportTicketType.RECHARGE_ISSUE,
+                topup=recarga,
+                summary=f"Problema recarga {recarga.provider_ref}: {motivo}",
+                description=f"Correo: {email}\n\n{detalle}",
             )
-            messages.success(request, f"Reporte enviado para la recarga {recarga.code}.")
+            messages.success(request, f"Reporte enviado para la recarga {recarga.provider_ref}.")
             return redirect("historial_recargas")
 
     return render(
@@ -730,63 +673,46 @@ def reporte_recarga(request, recarga_id):
 
 @login_required(login_url="index")
 def recarga(request):
-    _event, snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
     role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
-    wallet = _wallet_for(request.user)
+    saldo_actual = WalletService.get_balance(event=event, user=request.user) if event else 0
     error_message = ""
 
     if request.method == "POST":
-        amount = _parse_amount(request.POST.get("amount", ""))
-        card_raw = request.POST.get("card", "")
-        card_digits = re.sub(r"\D", "", card_raw)
-        last4 = card_digits[-4:] if card_digits else ""
-        card_label = f"Tarjeta **** {last4}" if last4 else "Tarjeta"
-
-        if amount <= 0:
-            error_message = "Ingresa un monto valido para recargar."
+        if not event:
+            error_message = "No hay un evento activo para realizar recargas."
         else:
-            with transaction.atomic():
-                locked_wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
-                recharge = Recharge.objects.create(
-                    user=request.user,
-                    amount=amount,
-                    payment_method="PayPal",
-                    card_label=card_label,
-                    status="success",
-                )
-                balance_before = locked_wallet.balance
-                locked_wallet.balance = balance_before + amount
-                locked_wallet.save(update_fields=["balance", "updated_at"])
-                _append_wallet_ledger(
-                    wallet=locked_wallet,
-                    user=request.user,
-                    movement_type="recharge",
-                    amount=amount,
-                    balance_before=balance_before,
-                    balance_after=locked_wallet.balance,
-                    reference_type="recharge",
-                    reference_id=recharge.code,
-                    description="Recarga de saldo",
-                )
-            try:
-                _sync_legacy_recharge_to_v2(
-                    user=request.user,
-                    recharge=recharge,
-                    amount=amount,
-                )
-                _sync_legacy_wallet_balance_to_v2(user=request.user, legacy_balance=locked_wallet.balance)
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("No se pudo sincronizar recarga legacy hacia esquema v2: %s", exc)
-            messages.success(request, f"Recarga aplicada correctamente ({recharge.code}).")
-            return redirect("recarga")
+            amount = _parse_amount(request.POST.get("amount", ""))
+            card_raw = request.POST.get("card", "")
+            card_digits = re.sub(r"\D", "", card_raw)
+            last4 = card_digits[-4:] if card_digits else ""
+            card_label = f"Tarjeta **** {last4}" if last4 else "Tarjeta"
+
+            if amount <= 0:
+                error_message = "Ingresa un monto valido para recargar."
+            else:
+                try:
+                    topup = WalletService.record_online_topup(
+                        event=event,
+                        user=request.user,
+                        amount_ucoin=amount,
+                        provider=_TOPUP_PROVIDER,
+                        provider_ref=card_label,
+                    )
+                    saldo_actual = WalletService.get_balance(event=event, user=request.user)
+                    messages.success(request, f"Recarga aplicada correctamente ({topup.provider_ref}).")
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("Error al procesar recarga: %s", exc)
+                    error_message = "No se pudo procesar la recarga. Intenta de nuevo."
+                return redirect("recarga")
 
     return render(
         request,
         "core/recarga.html",
         {
-            "saldo_actual": wallet.balance,
+            "saldo_actual": saldo_actual,
             "error_message": error_message,
         },
     )
@@ -1784,9 +1710,9 @@ def mi_cuenta_resumen(request):
 
 @login_required(login_url="index")
 def cliente_web_app(request):
-    _event, snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
     role_redirect = _redirect_if_no_cliente_access(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
-    saldo_actual = _wallet_for(request.user).balance
+    saldo_actual = WalletService.get_balance(event=event, user=request.user) if event else 0
     return render(request, "core/cliente_web_app.html", {"saldo_actual": saldo_actual})

@@ -19,13 +19,13 @@
     <div class="list-item">
       <div>
         <div class="list-item__title">Recarga PayPal</div>
-        <div class="list-item__meta">ID: {{ recarga.code }} · {{ recarga.created_at|date:"d M" }} · {{ recarga.card_label }}</div>
-        <a class="report-link" href="{% url 'reporte_recarga' recarga.code %}">
+        <div class="list-item__meta">ID: {{ recarga.provider_ref }} · {{ recarga.created_at|date:"d M" }} · {{ recarga.provider }}</div>
+        <a class="report-link" href="{% url 'reporte_recarga' recarga.provider_ref %}">
           <span class="report-icon" aria-hidden="true"><svg class="icon icon--sm"><use href="{% static 'core/icons/sprite.svg' %}#report"></use></svg></span>
           Reportar problema
         </a>
       </div>
-      <div class="list-item__price">+${{ recarga.amount|floatformat:2 }}</div>
+      <div class="list-item__price">+${{ recarga.amount_ucoin|floatformat:2 }}</div>
     </div>
     {% empty %}
     <div class="list-item">

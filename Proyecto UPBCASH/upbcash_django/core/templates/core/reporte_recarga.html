@@ -19,26 +19,28 @@
   <div class="list-item mb-14">
     <div>
       <div class="list-item__title">Recarga seleccionada</div>
-      <div class="list-item__meta">ID: {{ recarga.code }} · {{ recarga.created_at|date:"d M" }} · {{ recarga.card_label }}</div>
+      <div class="list-item__meta">ID: {{ recarga.provider_ref }} · {{ recarga.created_at|date:"d M" }} · {{
+        recarga.provider }}</div>
     </div>
-    <div class="list-item__price">+${{ recarga.amount|floatformat:2 }}</div>
+    <div class="list-item__price">+${{ recarga.amount_ucoin|floatformat:2 }}</div>
   </div>
 
-  <form class="form form--wide" method="post" action="{% url 'reporte_recarga' recarga.code %}" novalidate>
+  <form class="form form--wide" method="post" action="{% url 'reporte_recarga' recarga.provider_ref %}" novalidate>
     {% csrf_token %}
     <div class="field">
       <label for="recarga-id">ID de la recarga</label>
-      <input id="recarga-id" class="input" type="text" value="{{ recarga.code }}" readonly />
+      <input id="recarga-id" class="input" type="text" value="{{ recarga.provider_ref }}" readonly />
     </div>
 
     <div class="field">
       <label for="recarga-correo">Correo del cliente</label>
-      <input id="recarga-correo" name="recarga_correo" class="input" type="email" placeholder="correo@ejemplo.com" value="{{ request.user.email }}" required />
+      <input id="recarga-correo" name="recarga_correo" class="input" type="email" placeholder="correo@ejemplo.com"
+        value="{{ request.user.email }}" required />
     </div>
 
     <div class="field">
       <label for="recarga-monto">Monto de la recarga</label>
-      <input id="recarga-monto" class="input" type="text" value="+${{ recarga.amount|floatformat:2 }}" readonly />
+      <input id="recarga-monto" class="input" type="text" value="+${{ recarga.amount_ucoin|floatformat:2 }}" readonly />
     </div>
 
     <div class="field">
@@ -58,7 +60,8 @@
 
     <div class="field">
       <label for="recarga-detalle">Descripcion del problema</label>
-      <textarea id="recarga-detalle" name="recarga_detalle" class="input" rows="4" placeholder="Describe lo ocurrido..." required></textarea>
+      <textarea id="recarga-detalle" name="recarga_detalle" class="input" rows="4" placeholder="Describe lo ocurrido..."
+        required></textarea>
     </div>
 
     <div class="field">

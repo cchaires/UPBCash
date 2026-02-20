@@ -3,3 +3,4 @@ __pycache__/
 *.py[cod]
 db.sqlite3
 /upbcash_django/media/stalls/
+.venv
