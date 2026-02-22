@@ -790,6 +790,13 @@ def _redirect_if_no_staff_role(request, *, snapshot):
     return redirect("cliente")
 
 
+def _redirect_if_no_admin_access(request, *, snapshot):
+    if snapshot.is_superuser:
+        return None
+    messages.error(request, "Solo administradores pueden acceder a este panel.")
+    return redirect("cliente")
+
+
 def _vendor_assignment(event, user):
     if not event:
         return None
@@ -1606,7 +1613,10 @@ def staff_mapa_asignacion(request):
 
 @login_required(login_url="index")
 def admin_inicio(request):
-    event, _snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     orders_qs = SalesOrder.objects.none()
     stalls_qs = Stall.objects.none()
     if event:
@@ -1643,7 +1653,10 @@ def admin_inicio(request):
 
 @login_required(login_url="index")
 def admin_mapa(request):
-    event, _snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     assignment_rows = []
     if event:
         assignment_rows = list(

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pruebas Automatizadas Django - UPBCash</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 36px; color: #1a1a1a; line-height: 1.45; }
+    h1, h2 { color: #0f2742; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+    th, td { border: 1px solid #c9c9c9; padding: 8px; vertical-align: top; text-align: left; }
+    th { background: #f0f5fb; }
+    pre { background: #f7f7f7; border: 1px solid #ddd; padding: 10px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Resultado de Pruebas Automatizadas - UPBCash Django</h1>
+  <p><strong>Fecha:</strong> 2026-02-22</p>
+
+  <h2>Ejecuciones realizadas</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Comando</th>
+        <th>Resultado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>DB_ENGINE=sqlite ./venv/bin/python manage.py test core.tests.StaffPanelAccessTests --verbosity 2</code></td>
+        <td>17 pruebas, <strong>OK</strong>.</td>
+      </tr>
+      <tr>
+        <td><code>DB_ENGINE=sqlite ./venv/bin/python manage.py test --verbosity 1</code></td>
+        <td>44 pruebas, <strong>OK</strong>.</td>
+      </tr>
+      <tr>
+        <td><code>DJANGO_DEBUG=False DJANGO_SECRET_KEY=&lt;fuerte&gt; ... manage.py check --deploy</code></td>
+        <td>Sin issues: <strong>System check identified no issues (0 silenced)</strong>.</td>
+      </tr>
+      <tr>
+        <td><code>DJANGO_DEBUG=False DB_ENGINE=sqlite manage.py check</code> (sin secret fuerte)</td>
+        <td>Falla esperada por enforcement de seguridad de <code>DJANGO_SECRET_KEY</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Extracto de evidencia</h2>
+  <pre>Ran 44 tests in 20.026s
+OK
+Destroying test database for alias 'default'...
+System check identified no issues (0 silenced).</pre>
+
+  <h2>Nuevas pruebas agregadas</h2>
+  <ul>
+    <li><code>test_admin_panel_rejects_authenticated_non_superuser</code></li>
+    <li><code>test_admin_panel_allows_superuser</code></li>
+  </ul>
+
+  <h2>Conclusiones</h2>
+  <p>La regresion completa es satisfactoria. Se mantiene estabilidad funcional y se fortalece seguridad de despliegue con validaciones automaticas.</p>
+</body>
+</html>

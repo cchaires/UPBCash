@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reporte UX Usuario Invitado 3</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 36px; color: #1a1a1a; line-height: 1.45; }
+    h1 { color: #0f2742; }
+    .block { border: 1px solid #d7d7d7; padding: 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>REPORTE DE PRUEBA DE USUARIO</h1>
+  <div class="block">
+    <p><strong>Proyecto:</strong> UPBCash Django</p>
+    <p><strong>Usuario ID:</strong> Invitado 3 (simulacion tecnica QA)</p>
+    <p><strong>Tarea Asignada:</strong> Flujo staff: buscar usuario, sincronizar roles y asignar vendedor a puesto/espacio.</p>
+  </div>
+
+  <div class="block">
+    <p><strong>METRICAS:</strong></p>
+    <p><strong>Tiempo Total:</strong> 02:43</p>
+    <p><strong>Exito:</strong> Si completo</p>
+  </div>
+
+  <div class="block">
+    <p><strong>OBSERVACIONES (Think Aloud):</strong></p>
+    <ul>
+      <li>"La busqueda por matricula y correo funciona y acelera la gestion".</li>
+      <li>"El sistema evita cambios peligrosos como revocar mi propio rol staff".</li>
+      <li>"La asignacion de spot y vendedor se entiende, pero requiere atencion por varios campos".</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <p><strong>ERRORES DETECTADOS:</strong></p>
+    <ol>
+      <li>Formulario de asignacion con carga cognitiva media por cantidad de datos en una sola vista - (Severidad: 2)</li>
+      <li>Mensajes de exito/advertencia podrian diferenciarse mas por color/jerarquia - (Severidad: 1)</li>
+      <li>Riesgo corregido en esta iteracion: acceso indebido previo a panel administrador para no superusuarios - (Severidad historica: 4, estado: corregido)</li>
+    </ol>
+  </div>
+</body>
+</html>

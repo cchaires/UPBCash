@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reporte UX Usuario Invitado 2</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 36px; color: #1a1a1a; line-height: 1.45; }
+    h1 { color: #0f2742; }
+    .block { border: 1px solid #d7d7d7; padding: 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>REPORTE DE PRUEBA DE USUARIO</h1>
+  <div class="block">
+    <p><strong>Proyecto:</strong> UPBCash Django</p>
+    <p><strong>Usuario ID:</strong> Invitado 2 (simulacion tecnica QA)</p>
+    <p><strong>Tarea Asignada:</strong> Flujo vendedor: editar tienda, crear producto inventariable y desactivar producto.</p>
+  </div>
+
+  <div class="block">
+    <p><strong>METRICAS:</strong></p>
+    <p><strong>Tiempo Total:</strong> 02:11</p>
+    <p><strong>Exito:</strong> Completo con ayuda (lectura de mensaje de validacion)</p>
+  </div>
+
+  <div class="block">
+    <p><strong>OBSERVACIONES (Think Aloud):</strong></p>
+    <ul>
+      <li>"Encuentro rapido la vista de productos, el modal abre bien".</li>
+      <li>"Cuando olvido un campo, el sistema me regresa y conserva contexto de edicion".</li>
+      <li>"Desactivar producto es directo, aunque me gustaria confirmacion visual mas evidente".</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <p><strong>ERRORES DETECTADOS:</strong></p>
+    <ol>
+      <li>Falta confirmacion modal para accion destructiva (desactivar producto) - (Severidad: 2)</li>
+      <li>Mensajes de validacion largos en formulario pueden saturar en pantallas pequenas - (Severidad: 1)</li>
+    </ol>
+  </div>
+</body>
+</html>

@@ -448,6 +448,22 @@ class StaffPanelAccessTests(TestCase):
         response = self.client.get(reverse("vendedor"))
         self.assertEqual(response.status_code, 200)
 
+    def test_admin_panel_rejects_authenticated_non_superuser(self):
+        self.client.login(username="client-user", password="secret")
+        response_admin = self.client.get(reverse("admin_inicio"))
+        self.assertRedirects(response_admin, reverse("cliente"))
+
+        response_admin_map = self.client.get(reverse("admin_mapa"))
+        self.assertRedirects(response_admin_map, reverse("cliente"))
+
+    def test_admin_panel_allows_superuser(self):
+        self.client.login(username="root-user", password="secret")
+        response_admin = self.client.get(reverse("admin_inicio"))
+        self.assertEqual(response_admin.status_code, 200)
+
+        response_admin_map = self.client.get(reverse("admin_mapa"))
+        self.assertEqual(response_admin_map.status_code, 200)
+
     def test_dropdown_hides_vendor_for_staff_without_vendor_role(self):
         self.client.login(username="staff-user", password="secret")
         response = self.client.get(reverse("cliente"))
