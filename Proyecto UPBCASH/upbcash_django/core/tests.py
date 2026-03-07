@@ -106,6 +106,119 @@ class CoreV2ViewsTests(TestCase):
         self.assertEqual(len(menu_stalls), 1)
         self.assertTrue(menu_stalls[0]["items"][0]["is_low_stock"])
 
+    def test_menu_v2_filters_by_selected_stall(self):
+        self.user_model.objects.create_user(username="buyer-stall-filter", password="secret")
+        staff_user = self.user_model.objects.create_user(username="staff-stall-filter", password="secret")
+        stall_a = self._build_stall(code="stall-filter-a", name="Puesto Filtro A")
+        stall_b = self._build_stall(code="stall-filter-b", name="Puesto Filtro B")
+        self._assign_stall_to_spot(stall=stall_a, staff_user=staff_user)
+        self._assign_stall_to_spot(stall=stall_b, staff_user=staff_user)
+
+        catalog_a = CatalogProduct.objects.create(sku="filter-a-001", name="Producto A")
+        catalog_b = CatalogProduct.objects.create(sku="filter-b-001", name="Producto B")
+        StallProduct.objects.create(
+            event=self.event,
+            stall=stall_a,
+            catalog_product=catalog_a,
+            display_name="Taco A",
+            item_nature=ItemNature.INVENTORIABLE,
+            category=self.category_food,
+            subcategory=self.subcategory_snack,
+            price_ucoin=Decimal("19.00"),
+            cost_ucoin=Decimal("7.00"),
+            stock_mode=StockMode.FINITE,
+            stock_qty=10,
+            is_active=True,
+        )
+        StallProduct.objects.create(
+            event=self.event,
+            stall=stall_b,
+            catalog_product=catalog_b,
+            display_name="Taco B",
+            item_nature=ItemNature.INVENTORIABLE,
+            category=self.category_food,
+            subcategory=self.subcategory_snack,
+            price_ucoin=Decimal("21.00"),
+            cost_ucoin=Decimal("9.00"),
+            stock_mode=StockMode.FINITE,
+            stock_qty=10,
+            is_active=True,
+        )
+
+        self.client.login(username="buyer-stall-filter", password="secret")
+        response = self.client.get(reverse("menu_alimentos"), {"stall": str(stall_a.id)})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_stall"], str(stall_a.id))
+        menu_stalls = response.context["menu_stalls"]
+        self.assertEqual(len(menu_stalls), 1)
+        self.assertEqual(menu_stalls[0]["stall_id"], stall_a.id)
+        self.assertContains(response, "Taco A")
+        self.assertNotContains(response, "Taco B")
+
+    def test_menu_post_preserves_stall_filter_querystring(self):
+        client_user = self.user_model.objects.create_user(username="buyer-stall-post", password="secret")
+        staff_user = self.user_model.objects.create_user(username="staff-stall-post", password="secret")
+        stall = self._build_stall(code="stall-post-filter", name="Puesto Post Filter")
+        self._assign_stall_to_spot(stall=stall, staff_user=staff_user)
+        catalog = CatalogProduct.objects.create(sku="post-filter-001", name="Producto Post")
+        product = StallProduct.objects.create(
+            event=self.event,
+            stall=stall,
+            catalog_product=catalog,
+            display_name="Combo Post",
+            item_nature=ItemNature.INVENTORIABLE,
+            category=self.category_food,
+            subcategory=self.subcategory_snack,
+            price_ucoin=Decimal("30.00"),
+            cost_ucoin=Decimal("11.00"),
+            stock_mode=StockMode.FINITE,
+            stock_qty=10,
+            is_active=True,
+        )
+
+        self.client.login(username="buyer-stall-post", password="secret")
+        response = self.client.post(
+            reverse("menu_alimentos"),
+            {"stall_product_id": str(product.id), "action": "add", "stall": str(stall.id)},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"{reverse('menu_alimentos')}?stall={stall.id}")
+        self.assertTrue(
+            CommerceCartItem.objects.filter(event=self.event, user=client_user, stall_product=product).exists()
+        )
+
+    def test_cliente_mapa_context_includes_navigation_fields(self):
+        self.user_model.objects.create_user(username="buyer-map-context", password="secret")
+        staff_user = self.user_model.objects.create_user(username="staff-map-context", password="secret")
+        stall = self._build_stall(code="stall-map-context", name="Puesto Mapa Contexto")
+        assignment = self._assign_stall_to_spot(stall=stall, staff_user=staff_user)
+
+        self.client.login(username="buyer-map-context", password="secret")
+        response = self.client.get(reverse("cliente_mapa"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("map_spots", response.context)
+        self.assertEqual(len(response.context["map_spots"]), 1)
+        row = response.context["map_spots"][0]
+        self.assertEqual(row["stall_id"], stall.id)
+        self.assertEqual(row["spot_label"], assignment.spot.label)
+        self.assertEqual(row["menu_url"], f"{reverse('menu_alimentos')}?stall={stall.id}")
+        self.assertIn("core/img/imgupbcash-logo-c.png", row["stall_image_url"])
+
+    def test_cliente_mapa_renders_clickable_spot_link_to_menu(self):
+        self.user_model.objects.create_user(username="buyer-map-link", password="secret")
+        staff_user = self.user_model.objects.create_user(username="staff-map-link", password="secret")
+        stall = self._build_stall(code="stall-map-link", name="Puesto Mapa Link")
+        self._assign_stall_to_spot(stall=stall, staff_user=staff_user)
+
+        self.client.login(username="buyer-map-link", password="secret")
+        response = self.client.get(reverse("cliente_mapa"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'href="{reverse("menu_alimentos")}?stall={stall.id}"')
+
     def test_vendor_can_create_no_inventoriable_product(self):
         vendor = self.user_model.objects.create_user(username="vendor", password="secret")
         staff = self.user_model.objects.create_user(username="staff", password="secret")

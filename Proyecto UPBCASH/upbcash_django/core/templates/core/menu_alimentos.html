@@ -13,6 +13,7 @@
 
 <section class="card mb-14">
   <form class="form filter-row" method="get" action="{% url 'menu_alimentos' %}">
+    {% if selected_stall %}<input type="hidden" name="stall" value="{{ selected_stall }}" />{% endif %}
     <div class="field">
       <label for="category">Categoria</label>
       <select class="input" id="category" name="category">
@@ -74,6 +75,7 @@
         <form class="item__actions" method="post" action="{% url 'menu_alimentos' %}">
           {% csrf_token %}
           <input type="hidden" name="stall_product_id" value="{{ item.id }}" />
+          {% if selected_stall %}<input type="hidden" name="stall" value="{{ selected_stall }}" />{% endif %}
           {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}" />{% endif %}
           {% if selected_subcategory %}<input type="hidden" name="subcategory" value="{{ selected_subcategory }}" />{% endif %}
           {% if selected_item_nature %}<input type="hidden" name="item_nature" value="{{ selected_item_nature }}" />{% endif %}
