@@ -64,7 +64,7 @@ El proyecto se enfoco en resolver problemas reales detectados en kermeses y even
 - Captura del panel de vendedor con productos: `panel_vendedor_productos.png`
 - Captura del panel staff: `panel_staff.png`
 - Captura del mapa o modulo de asignacion de espacios: `mapa_asignacion.png`
-- [Insertar captura o tabla con la salida resumida de pruebas y validacion tecnica]
+- Tabla de validacion tecnica integrada en la seccion de Pruebas
 
 ### Tablas, graficos o diagramas recomendados
 
@@ -318,8 +318,29 @@ Estas pruebas cubren escenarios funcionales y de control relevantes para la oper
 
 Las pruebas muestran que la base funcional del sistema es consistente en su estado actual: los permisos por rol operan correctamente, los flujos de compra y entrega tienen validaciones activas, y la arquitectura modular permite mantener separadas las responsabilidades del sistema. Este resultado no significa que el proyecto este completamente cerrado a futuras mejoras, pero si demuestra que la implementacion existente cuenta con un nivel suficiente de coherencia para respaldar la entrega academica del periodo enero-marzo de 2026.
 
-[Insertar captura o tabla con la salida de `manage.py check`]
-[Insertar captura o tabla con la salida resumida de la suite de pruebas]
+#### Tabla de evidencia de `manage.py check`
+
+| Comando ejecutado | Resultado esperado | Resultado obtenido |
+|---|---|---|
+| `python manage.py check` | Verificar integridad general de configuracion, apps, modelos y rutas | `System check identified no issues (0 silenced).` |
+
+#### Tabla de evidencia de la suite automatizada
+
+| Dato observado | Resultado |
+|---|---|
+| Total de pruebas ejecutadas | 42 |
+| Duracion aproximada | 145.720 segundos |
+| Base de datos de pruebas | Creada y destruida correctamente para el alias `default` |
+| Estado final | `OK` |
+
+#### Salida resumida de validacion
+
+```text
+Found 42 test(s).
+System check identified no issues (0 silenced).
+Ran 42 tests in 145.720s
+OK
+```
 
 ## 2.5 Anexos
 
@@ -342,7 +363,7 @@ Las pruebas muestran que la base funcional del sistema es consistente en su esta
 - Captura del panel vendedor: `panel_vendedor_productos.png`
 - Captura del panel staff: `panel_staff.png`
 - Captura del mapa de asignacion: `mapa_asignacion.png`
-- [Insertar tabla o evidencia de pruebas]
+- Tabla o evidencia de pruebas integrada en la seccion de Pruebas
 - [Insertar diagrama o esquema de arquitectura modular]
 
 ---
@@ -373,4 +394,11 @@ El principal pendiente para una entrega academica completamente cerrada no es te
 
 Como evidencia tecnica del estado actual del sistema, se verifico que el proyecto pasa `manage.py check` sin incidencias y que la suite relevante ejecuta `42` pruebas con resultado final `OK`. Ademas, el codigo fuente refleja una arquitectura modular basada en Django, con configuracion por entorno, soporte de APIs internas, control de roles y logica de negocio centralizada en servicios.
 
-[Insertar captura o tabla final de evidencia tecnica]
+| Evidencia tecnica final | Resultado |
+|---|---|
+| Integridad del proyecto Django | `manage.py check` sin incidencias |
+| Pruebas automatizadas | 42 pruebas ejecutadas |
+| Estado de pruebas | `OK` |
+| Arquitectura de software | Modular por apps: `core`, `events`, `stalls`, `commerce`, `accounting`, `operations` |
+| Persistencia | SQLite local con soporte para PostgreSQL |
+| Operacion local | Proyecto funcional en entorno local con `runserver` |
