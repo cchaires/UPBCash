@@ -12,7 +12,7 @@
     <div class="btn btn--ghost">Perfil activo</div>
   </header>
 
-  <form class="form-grid">
+  <form class="form-grid" id="accountProfileForm">
     <div class="field"><label for="nombre">Nombre</label><input id="nombre" type="text" value="Fernando" /></div>
     <div class="field"><label for="apellido">Apellido</label><input id="apellido" type="text" value="Gomez" /></div>
     <div class="field"><label for="correo">Correo institucional</label><input id="correo" type="email" value="fernando@upb.edu.mx" /></div>
@@ -25,7 +25,12 @@
   </form>
 
   <div class="actions">
-    <button class="btn btn--ghost" type="button">Cancelar</button>
+    <button
+      class="btn btn--ghost js-cancel-back"
+      type="button"
+      data-form-selector="#accountProfileForm"
+      data-fallback-url="{% url 'mi_cuenta' %}"
+    >Cancelar</button>
     <button class="btn btn--primary" type="button">Guardar cambios</button>
   </div>
   <div class="helper">Tus datos se reflejaran en el perfil de cliente y vendedor.</div>

@@ -486,6 +486,116 @@
   outline: var(--focus-ring);
 }
 
+.client-map .map-card {
+  overflow: visible;
+}
+
+.map-spot--client {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 84px;
+  max-width: 120px;
+  padding: 5px 10px 6px;
+  border: 1px solid rgba(126, 85, 0, 0.58);
+  background: linear-gradient(180deg, rgba(255, 210, 95, 0.96), rgba(212, 161, 31, 0.95));
+  color: #352400;
+  text-decoration: none;
+  line-height: 1.15;
+  z-index: 2;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(126, 85, 0, 0.22);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.map-spot--client .map-spot__label {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+.map-spot--client .map-spot__name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.map-spot-preview {
+  display: none;
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 132px;
+  padding: 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(91, 19, 126, 0.2);
+  background: linear-gradient(180deg, var(--surface), var(--surface-elevated));
+  box-shadow: 0 14px 24px rgba(22, 10, 33, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  z-index: calc(var(--z-dropdown) + 3);
+  transition: opacity 0.12s ease-out;
+}
+
+.map-spot-preview::after {
+  content: none;
+}
+
+.map-spot-preview__image {
+  display: block;
+  width: 100%;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 7px;
+  border: 1px solid rgba(34, 21, 43, 0.12);
+}
+
+.map-spot-preview__stall {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.map-spot-preview__meta {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(111, 43, 149, 0.1);
+  border: 1px solid rgba(111, 43, 149, 0.25);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--brand-purple-800);
+  letter-spacing: 0.01em;
+}
+
+.map-spot--client:hover,
+.map-spot--client:focus-visible {
+  transform: translate(-50%, -50%) scale(1.05);
+  filter: brightness(1.02);
+  box-shadow: 0 10px 22px rgba(53, 36, 0, 0.3);
+}
+
+.map-spot--client:hover .map-spot-preview {
+  display: block;
+  opacity: 1;
+}
+
+.map-spot--client:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .stall-group {
   display: grid;
   gap: 8px;

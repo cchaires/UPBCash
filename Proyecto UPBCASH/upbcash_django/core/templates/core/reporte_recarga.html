@@ -25,7 +25,7 @@
     <div class="list-item__price">+${{ recarga.amount_ucoin|floatformat:2 }}</div>
   </div>
 
-  <form class="form form--wide" method="post" action="{% url 'reporte_recarga' recarga.provider_ref %}" novalidate>
+  <form class="form form--wide" id="rechargeIssueForm" method="post" action="{% url 'reporte_recarga' recarga.provider_ref %}" novalidate>
     {% csrf_token %}
     <div class="field">
       <label for="recarga-id">ID de la recarga</label>
@@ -70,7 +70,12 @@
     </div>
 
     <div class="actions-row">
-      <a class="btn btn--ghost" href="{% url 'historial_recargas' %}">Cancelar</a>
+      <a
+        class="btn btn--ghost js-cancel-back"
+        href="{% url 'historial_recargas' %}"
+        data-form-selector="#rechargeIssueForm"
+        data-fallback-url="{% url 'historial_recargas' %}"
+      >Cancelar</a>
       <button class="btn btn--primary" type="submit">Enviar reporte</button>
     </div>
   </form>

@@ -9,10 +9,9 @@
       <h1 class="card__title">Editar tarjeta</h1>
       <p class="card__subtitle">Actualiza la informacion de tu metodo de pago.</p>
     </div>
-    <a class="btn btn--ghost" href="{% url 'mi_cuenta_tarjetas' %}">Volver</a>
   </header>
 
-  <form class="form-grid">
+  <form class="form-grid" id="cardEditForm">
     <div class="field grid-col-full"><label for="cardName">Nombre en la tarjeta</label><input id="cardName" type="text" value="Fernando Gomez" /></div>
     <div class="field grid-col-full"><label for="cardNumber">Numero de tarjeta</label><input id="cardNumber" type="text" value="4111 1111 1111 3412" /></div>
     <div class="field"><label for="cardExp">Vencimiento</label><input id="cardExp" type="text" value="08/27" /></div>
@@ -21,7 +20,13 @@
   </form>
 
   <div class="actions">
-    <button class="btn btn--ghost" type="button">Cancelar</button>
+    <button
+      class="btn btn--ghost js-cancel-back"
+      type="button"
+      id="cardEditCancel"
+      data-form-selector="#cardEditForm"
+      data-fallback-url="{% url 'mi_cuenta_tarjetas' %}"
+    >Cancelar</button>
     <button class="btn btn--primary" type="button">Guardar cambios</button>
   </div>
 </section>

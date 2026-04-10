@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reporte UX Usuario Invitado 1</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 36px; color: #1a1a1a; line-height: 1.45; }
+    h1 { color: #0f2742; }
+    .block { border: 1px solid #d7d7d7; padding: 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>REPORTE DE PRUEBA DE USUARIO</h1>
+  <div class="block">
+    <p><strong>Proyecto:</strong> UPBCash Django</p>
+    <p><strong>Usuario ID:</strong> Invitado 1 (simulacion tecnica QA)</p>
+    <p><strong>Tarea Asignada:</strong> Flujo cliente: consultar menu, agregar producto al carrito y completar compra.</p>
+  </div>
+
+  <div class="block">
+    <p><strong>METRICAS:</strong></p>
+    <p><strong>Tiempo Total:</strong> 01:34</p>
+    <p><strong>Exito:</strong> Si completo</p>
+  </div>
+
+  <div class="block">
+    <p><strong>OBSERVACIONES (Think Aloud):</strong></p>
+    <ul>
+      <li>"Veo el menu y detecto rapido el boton para agregar al carrito".</li>
+      <li>"El resumen del carrito es claro, pero me gustaria ver el saldo restante mas destacado".</li>
+      <li>"El flujo de compra termina sin friccion y me manda al historial".</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <p><strong>ERRORES DETECTADOS:</strong></p>
+    <ol>
+      <li>Indicador de saldo en carrito con baja prominencia visual en ciertas resoluciones - (Severidad: 1)</li>
+      <li>Falta mensaje preventivo previo al pago cuando el carrito esta vacio (validacion aparece despues) - (Severidad: 2)</li>
+    </ol>
+  </div>
+</body>
+</html>

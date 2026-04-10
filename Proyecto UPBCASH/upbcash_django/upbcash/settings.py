@@ -27,8 +27,34 @@ def _env_bool(name, default=False):
     return raw_value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name, default=0):
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    try:
+        return int(raw_value.strip())
+    except ValueError:
+        return default
+
+
+def _is_strong_secret_key(value):
+    if not value:
+        return False
+    if value.startswith("django-insecure-"):
+        return False
+    if len(value) < 50:
+        return False
+    return len(set(value)) >= 5
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-upbcash-dev-key")
 DEBUG = _env_bool("DJANGO_DEBUG", True)
+if not DEBUG and not _is_strong_secret_key(SECRET_KEY):
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY insegura en produccion. Debe tener al menos 50 caracteres, "
+        "variedad de caracteres y no usar el prefijo django-insecure-."
+    )
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,testserver").split(",")
@@ -127,5 +153,12 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", not DEBUG)
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", not DEBUG)
+SECURE_HSTS_SECONDS = _env_int("DJANGO_SECURE_HSTS_SECONDS", 31536000 if not DEBUG else 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", not DEBUG)
+SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", not DEBUG)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Revision de Codigo Django - UPBCash</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 36px; color: #1a1a1a; line-height: 1.45; }
+    h1, h2 { color: #0f2742; }
+    .meta { margin-bottom: 18px; }
+    .ok { color: #1f7a1f; font-weight: bold; }
+    .risk { color: #9a1a1a; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+    th, td { border: 1px solid #c9c9c9; padding: 8px; vertical-align: top; text-align: left; }
+    th { background: #f0f5fb; }
+    code { background: #f6f6f6; padding: 1px 4px; }
+  </style>
+</head>
+<body>
+  <h1>Revision Tecnica de Codigo Django - UPBCash</h1>
+  <div class="meta">
+    <p><strong>Proyecto:</strong> UPBCash Django</p>
+    <p><strong>Fecha:</strong> 2026-02-22</p>
+    <p><strong>Alcance:</strong> Repositorio <code>UPBCash/Proyecto UPBCASH/upbcash_django</code></p>
+  </div>
+
+  <h2>Resumen ejecutivo</h2>
+  <p>Se realizo revision tecnica backend, se identificaron riesgos de seguridad y control de acceso, y se implementaron correcciones criticas sin afectar compatibilidad local ni contratos API existentes.</p>
+
+  <h2>Hallazgos principales</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Hallazgo</th>
+        <th>Severidad</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SEC-001</td>
+        <td>Las rutas <code>/administrador/</code> y <code>/administrador/mapa/</code> permitian acceso con solo autenticacion.</td>
+        <td class="risk">Critica</td>
+        <td class="ok">Corregido</td>
+      </tr>
+      <tr>
+        <td>SEC-002</td>
+        <td>Configuracion de despliegue reportaba advertencias de seguridad en <code>check --deploy</code> (HSTS/SSL cookies/DEBUG/SECRET_KEY).</td>
+        <td>Alta</td>
+        <td class="ok">Corregido</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Cambios implementados</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Archivo</th>
+        <th>Cambio</th>
+        <th>Impacto</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>core/views.py</code></td>
+        <td>Se agrego helper de autorizacion administrativa y se aplico en <code>admin_inicio</code> y <code>admin_mapa</code>.</td>
+        <td>Bloquea acceso administrativo a usuarios no superusuario.</td>
+      </tr>
+      <tr>
+        <td><code>upbcash/settings.py</code></td>
+        <td>Se agregaron settings de seguridad por entorno: <code>SECURE_SSL_REDIRECT</code>, <code>SESSION_COOKIE_SECURE</code>, <code>CSRF_COOKIE_SECURE</code>, <code>SECURE_HSTS_SECONDS</code>, <code>SECURE_HSTS_INCLUDE_SUBDOMAINS</code>, <code>SECURE_HSTS_PRELOAD</code>.</td>
+        <td>Mejora postura de seguridad en produccion.</td>
+      </tr>
+      <tr>
+        <td><code>upbcash/settings.py</code></td>
+        <td>Se agrego validacion obligatoria de fortaleza de <code>DJANGO_SECRET_KEY</code> cuando <code>DJANGO_DEBUG=False</code>.</td>
+        <td>Evita despliegues inseguros con secret key debil o default.</td>
+      </tr>
+      <tr>
+        <td><code>core/tests.py</code></td>
+        <td>Se agregaron pruebas de autorizacion para panel admin.</td>
+        <td>Cubre regresion de acceso indebido.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Variables de entorno nuevas</h2>
+  <ul>
+    <li><code>DJANGO_SECURE_SSL_REDIRECT</code></li>
+    <li><code>DJANGO_SESSION_COOKIE_SECURE</code></li>
+    <li><code>DJANGO_CSRF_COOKIE_SECURE</code></li>
+    <li><code>DJANGO_SECURE_HSTS_SECONDS</code></li>
+    <li><code>DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS</code></li>
+    <li><code>DJANGO_SECURE_HSTS_PRELOAD</code></li>
+  </ul>
+
+  <h2>Conclusiones</h2>
+  <p>Se mitigaron los riesgos criticos detectados. El backend mantiene estabilidad funcional y mejora su perfil de seguridad para despliegue.</p>
+</body>
+</html>

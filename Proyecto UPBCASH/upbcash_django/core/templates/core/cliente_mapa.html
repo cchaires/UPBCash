@@ -3,15 +3,27 @@
 {% block title %}UPBCash - Mapa{% endblock %}
 
 {% block content %}
-<section class="card">
+<section class="card client-map">
   <h1 class="page-title">Mapa UPBC</h1>
   <p class="page-subtitle">Ubicacion de tiendas visibles para {{ event.name }}.</p>
   <div class="map-card mt-12">
     <img class="map-image" src="{{ map_image_url }}" alt="Mapa UPBC" />
     {% for spot in map_spots %}
-    <div class="map-spot map-spot--assigned js-map-spot" data-x="{{ spot.x_percent }}" data-y="{{ spot.y_percent }}">
-      {{ spot.label }} · {{ spot.stall_name }}
-    </div>
+    <a
+      class="map-spot map-spot--assigned map-spot--client js-map-spot"
+      href="{{ spot.menu_url }}"
+      data-x="{{ spot.x_percent }}"
+      data-y="{{ spot.y_percent }}"
+      aria-label="Abrir menu de {{ spot.stall_name }} en espacio {{ spot.spot_label }}"
+    >
+      <span class="map-spot__label">{{ spot.spot_label }}</span>
+      <span class="map-spot__name">{{ spot.stall_name }}</span>
+      <span class="map-spot-preview" aria-hidden="true">
+        <img class="map-spot-preview__image" src="{{ spot.stall_image_url }}" alt="" />
+        <span class="map-spot-preview__stall">{{ spot.stall_name }}</span>
+        <span class="map-spot-preview__meta">Espacio {{ spot.spot_label }}</span>
+      </span>
+    </a>
     {% endfor %}
   </div>
 </section>
@@ -22,6 +34,48 @@
   document.querySelectorAll(".js-map-spot").forEach((spot) => {
     spot.style.left = `${spot.dataset.x}%`;
     spot.style.top = `${spot.dataset.y}%`;
+    const preview = spot.querySelector(".map-spot-preview");
+    if (!preview) {
+      return;
+    }
+    if (!preview.dataset.floatingAttached) {
+      document.body.appendChild(preview);
+      preview.dataset.floatingAttached = "1";
+    }
+
+    const placePreview = (clientX, clientY) => {
+      const margin = 12;
+      const offset = 14;
+      const width = preview.offsetWidth || 132;
+      const height = preview.offsetHeight || 110;
+      let left = clientX + offset;
+      let top = clientY + offset;
+
+      if (left + width + margin > window.innerWidth) {
+        left = clientX - width - offset;
+      }
+      if (top + height + margin > window.innerHeight) {
+        top = clientY - height - offset;
+      }
+
+      preview.style.left = `${Math.max(margin, left)}px`;
+      preview.style.top = `${Math.max(margin, top)}px`;
+    };
+
+    spot.addEventListener("mouseenter", (event) => {
+      preview.style.display = "block";
+      preview.style.opacity = "1";
+      requestAnimationFrame(() => placePreview(event.clientX, event.clientY));
+    });
+    spot.addEventListener("mousemove", (event) => {
+      placePreview(event.clientX, event.clientY);
+    });
+    spot.addEventListener("mouseleave", () => {
+      preview.style.opacity = "0";
+      preview.style.display = "none";
+      preview.style.left = "-9999px";
+      preview.style.top = "-9999px";
+    });
   });
 </script>
 {% endblock %}

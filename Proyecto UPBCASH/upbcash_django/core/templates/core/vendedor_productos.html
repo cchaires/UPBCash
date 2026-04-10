@@ -157,6 +157,7 @@
 <script>
   (function () {
     const modalBackdrop = document.getElementById("productModalBackdrop");
+    const productModalForm = document.getElementById("productFormModal");
     const openModalButton = document.getElementById("openProductModal");
     const closeModalButton = document.getElementById("closeProductModal");
     const cancelModalButton = document.getElementById("cancelProductModal");
@@ -189,9 +190,17 @@
       clearModalQueryParams();
     }
 
+    function resetProductModalForm() {
+      if (!productModalForm) return;
+      productModalForm.reset();
+    }
+
     openModalButton?.addEventListener("click", openModal);
     closeModalButton?.addEventListener("click", closeModal);
-    cancelModalButton?.addEventListener("click", closeModal);
+    cancelModalButton?.addEventListener("click", function () {
+      resetProductModalForm();
+      closeModal();
+    });
 
     modalBackdrop?.addEventListener("click", function (event) {
       if (event.target === modalBackdrop) closeModal();

@@ -289,7 +289,7 @@ def _parse_ucoin(raw_value):
 
 
 def _menu_filter_querystring(request):
-    allowed_keys = ["category", "subcategory", "item_nature"]
+    allowed_keys = ["category", "subcategory", "item_nature", "stall"]
     payload = {}
     for key in allowed_keys:
         value = (request.POST.get(key) or request.GET.get(key) or "").strip()
@@ -356,6 +356,7 @@ def menu_alimentos(request):
                 "selected_category": "",
                 "selected_subcategory": "",
                 "selected_item_nature": "",
+                "selected_stall": "",
                 "item_nature_options": ItemNature.choices,
             },
         )
@@ -363,6 +364,24 @@ def menu_alimentos(request):
     category_slug = (request.GET.get("category") or "").strip()
     subcategory_slug = (request.GET.get("subcategory") or "").strip()
     item_nature = (request.GET.get("item_nature") or "").strip()
+    selected_stall = ""
+    selected_stall_raw = (request.GET.get("stall") or "").strip()
+    selected_stall_id = None
+    if selected_stall_raw:
+        try:
+            selected_stall_id = int(selected_stall_raw)
+        except (TypeError, ValueError):
+            selected_stall_id = None
+        else:
+            has_visible_stall = StallLocationAssignment.objects.filter(
+                event=event,
+                stall_id=selected_stall_id,
+                stall__status=StallStatus.OPEN,
+            ).exists()
+            if has_visible_stall:
+                selected_stall = str(selected_stall_id)
+            else:
+                selected_stall_id = None
 
     if request.method == "POST":
         action = request.POST.get("action", "add")
@@ -402,6 +421,8 @@ def menu_alimentos(request):
         return redirect(redirect_url)
 
     menu_qs = _menu_catalog_queryset(event)
+    if selected_stall_id is not None:
+        menu_qs = menu_qs.filter(stall_id=selected_stall_id)
     if category_slug:
         menu_qs = menu_qs.filter(category__slug=category_slug)
     if subcategory_slug:
@@ -454,6 +475,7 @@ def menu_alimentos(request):
             "selected_category": category_slug,
             "selected_subcategory": subcategory_slug,
             "selected_item_nature": item_nature,
+            "selected_stall": selected_stall,
             "item_nature_options": ItemNature.choices,
         },
     )
@@ -555,7 +577,11 @@ def cliente_mapa(request):
     map_spots = [
         {
             "label": row.spot.label,
+            "spot_label": row.spot.label,
+            "stall_id": row.stall_id,
             "stall_name": row.stall.name,
+            "stall_image_url": row.stall.image.url if row.stall.image else static("core/img/imgupbcash-logo-c.png"),
+            "menu_url": f"{reverse('menu_alimentos')}?{urlencode({'stall': row.stall_id})}",
             "x_percent": float(row.spot.x) * 100,
             "y_percent": float(row.spot.y) * 100,
         }
@@ -787,6 +813,13 @@ def _redirect_if_no_staff_role(request, *, snapshot):
     if has_permission(user=request.user, permission=PERM_ACCESS_STAFF_PANEL, snapshot=snapshot):
         return None
     messages.error(request, "Solo personal staff puede acceder a este panel.")
+    return redirect("cliente")
+
+
+def _redirect_if_no_admin_access(request, *, snapshot):
+    if snapshot.is_superuser:
+        return None
+    messages.error(request, "Solo administradores pueden acceder a este panel.")
     return redirect("cliente")
 
 
@@ -1606,7 +1639,10 @@ def staff_mapa_asignacion(request):
 
 @login_required(login_url="index")
 def admin_inicio(request):
-    event, _snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     orders_qs = SalesOrder.objects.none()
     stalls_qs = Stall.objects.none()
     if event:
@@ -1643,7 +1679,10 @@ def admin_inicio(request):
 
 @login_required(login_url="index")
 def admin_mapa(request):
-    event, _snapshot = _active_event_with_membership(request.user)
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
     assignment_rows = []
     if event:
         assignment_rows = list(
