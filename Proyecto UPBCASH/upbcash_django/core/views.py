@@ -113,7 +113,7 @@ def _create_profile_and_wallet(
 def index(request):
     if request.user.is_authenticated:
         snapshot = build_authz_snapshot(user=request.user)
-        if snapshot.event or snapshot.can_bypass_event_lock:
+        if not snapshot.is_event_locked:
             return redirect("cliente")
         error_message = "No hay un evento activo. El acceso se habilitara cuando inicie un nuevo evento."
         return render(request, "core/index.html", {"error_message": error_message}, status=403)
@@ -129,7 +129,7 @@ def index(request):
             login(request, user)
             ensure_user_client_membership(user=user)
             snapshot = build_authz_snapshot(user=user)
-            if snapshot.event or snapshot.can_bypass_event_lock:
+            if not snapshot.is_event_locked:
                 return redirect("cliente")
             error_message = "No hay un evento activo. El acceso se habilitara cuando inicie un nuevo evento."
             return render(request, "core/index.html", {"error_message": error_message}, status=403)
@@ -217,7 +217,15 @@ def registro(request):
                             invited_by_matricula=invited_by_matricula,
                         )
                         login(request, user)
-                        return redirect("cliente")
+                        snapshot = build_authz_snapshot(user=user)
+                        if not snapshot.is_event_locked:
+                            return redirect("cliente")
+                        messages.success(
+                            request,
+                            "Tu registro fue exitoso. Por el momento no hay una campaña activa; "
+                            "podras ingresar cuando inicie un nuevo evento.",
+                        )
+                        return redirect("index")
 
     return render(request, "core/registro.html", {"error_message": error_message})
 
