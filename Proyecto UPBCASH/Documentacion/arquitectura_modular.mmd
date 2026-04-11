@@ -1,0 +1,62 @@
+graph TD
+    subgraph Usuarios
+        U1[Cliente]
+        U2[Vendedor]
+        U3[Staff / Superuser]
+    end
+
+    subgraph core["core (UI / Auth)"]
+        C1[Layouts por rol]
+        C2[Vistas de autenticacion]
+        C3[Sistema visual CSS/JS]
+    end
+
+    subgraph events["events (Contexto de evento)"]
+        E1[EventCampaign]
+        E2[EventUserGroup / roles]
+        E3[Ventana publica y privada]
+    end
+
+    subgraph stalls["stalls (Puestos y productos)"]
+        S1[Stall / Tienda]
+        S2[StallProduct / Inventario]
+        S3[StallLocationAssignment]
+        S4[StallVendorMembership]
+        S5[Mapa y spots]
+    end
+
+    subgraph commerce["commerce (Compras)"]
+        CO1[CartItem]
+        CO2[CheckoutService]
+        CO3[SalesOrder / QR]
+    end
+
+    subgraph accounting["accounting (Saldos)"]
+        A1[Ledger doble partida]
+        A2[Recargas de UCoins]
+        A3[Saldo de usuario]
+    end
+
+    subgraph operations["operations (Staff)"]
+        O1[StaffAuditLog]
+        O2[Acciones de soporte]
+    end
+
+    U1 --> core
+    U2 --> core
+    U3 --> core
+
+    core --> events
+    core --> stalls
+    core --> commerce
+    core --> accounting
+    core --> operations
+
+    events --> stalls
+    events --> commerce
+    events --> accounting
+    events --> operations
+
+    stalls --> commerce
+    accounting --> commerce
+    operations --> events

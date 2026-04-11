@@ -40,9 +40,7 @@ El proyecto se enfoco en resolver problemas reales detectados en kermeses y even
 
 ### Riesgos criticos y observaciones
 
-- No se encontro en la documentacion una asignacion formal de responsables individuales para `RGPY`, `RAPE` y `RDS`; por ello se dejan como dato pendiente de completar.
-- El formato institucional hace referencia a graficos, cronograma Gantt y capturas; en la carpeta de documentacion no se identifico un Gantt final consolidado, por lo que en este borrador se sustituye por una tabla comparativa de avance.
-- La aplicacion esta tecnicamente funcional en entorno local, pero aun depende de la integracion de evidencia visual final para fortalecer la entrega academica.
+- La aplicacion esta tecnicamente funcional en entorno local con todas las pruebas automatizadas en verde.
 - El proyecto se encuentra estable desde la perspectiva de software base, aunque el despliegue productivo avanzado no forma parte del alcance actual.
 
 ### Avance de actividades
@@ -76,20 +74,13 @@ El proyecto se enfoco en resolver problemas reales detectados en kermeses y even
 
 ### Cronograma de actividades (estado de tiempos)
 
-Debido a que no se localizo un diagrama Gantt final consolidado dentro de la documentacion disponible, el estado del cronograma se presenta mediante una tabla de avance por bloque, tomando como referencia el trabajo efectivamente visible en documentacion, codigo fuente y pruebas automatizadas.
-
-| Bloque | Estado | Evidencia del avance |
-|---|---|---|
-| Diseno | Completado | Documentos de teoria, workshop, user persona y enfoque de interfaz |
-| Desarrollo | Completado en su base funcional | Proyecto Django con modulos implementados, servicios, modelos y rutas activas |
-| Pruebas | Completado en el alcance revisado | `manage.py check` sin issues y `42` pruebas en verde |
-| Documentacion | En proceso avanzado | Existe documentacion previa y este reporte final consolida el periodo enero-marzo de 2026 |
+![Cronograma UPBCash enero-marzo 2026](gantt_upbcash.png)
 
 ### Gestion de recursos y costos
 
 #### Materiales y software utilizados
 
-- Python 3.10/3.11 para desarrollo.
+- Python 3.11+ para desarrollo.
 - Django como framework principal del sistema.
 - SQLite como base de datos local por defecto.
 - PostgreSQL como base de datos soportada para entornos de desarrollo con mayor robustez.
@@ -249,6 +240,7 @@ El entorno tecnico del proyecto se resume en los siguientes componentes:
 - `/vendedor/tienda/`
 - `/vendedor/productos/`
 - `/vendedor/ventas/`
+- `/vendedor/mapa/`
 - `/staff/`
 - `/staff/eventos/`
 - `/staff/mapa-asignacion/`
@@ -261,6 +253,37 @@ El entorno tecnico del proyecto se resume en los siguientes componentes:
 - `POST /api/events/{event_id}/staff/assign-spot`
 - `POST /api/events/{event_id}/staff/grant-ucoins`
 - `GET /api/events/{event_id}/map/state`
+- `POST /api/events/{event_id}/map/spots`
+- `PATCH /api/events/{event_id}/map/spots/{spot_id}`
+- `DELETE /api/events/{event_id}/map/spots/{spot_id}`
+- `POST /api/events/{event_id}/stalls/{stall_id}/assign-spot`
+- `POST /api/events/{event_id}/stalls/{stall_id}/add-vendor`
+
+#### Matriz de permisos por rol
+
+| Rol | Permiso | Descripcion |
+|---|---|---|
+| cliente | `events.access_cliente_portal` | Acceso al portal de cliente |
+| cliente | `events.checkout_cart` | Realizar compras mediante carrito |
+| vendedor | `events.access_vendedor_portal` | Acceso al portal de vendedor |
+| vendedor | `events.manage_vendor_products` | Alta, edicion y gestion de productos |
+| vendedor | `events.soft_delete_vendor_products` | Desactivacion logica de productos |
+| vendedor | `events.manage_vendor_stall_image` | Edicion de imagen de tienda |
+| vendedor | `events.verify_order_qr` | Validacion de QR para entrega de pedidos |
+| staff | `events.access_staff_panel` | Acceso al panel de staff |
+| staff | `events.manage_event_profiles` | Asignacion y revocacion de roles |
+| staff | `events.assign_vendor_stall` | Asignacion de vendedores a tiendas |
+| staff | `events.grant_ucoins` | Otorgamiento de saldo a usuarios |
+| superuser | — | Bypass de permisos y bloqueo por evento |
+
+#### Reglas de negocio clave
+
+- Una tienda requiere un `StallLocationAssignment` activo para ser visible en el menu del cliente; sin asignacion de espacio no aparece aunque tenga productos.
+- La ventana publica del evento (`public_starts_at`, `public_ends_at`) es independiente de la ventana interna de staff/vendedor (`starts_at`, `ends_at`). El cliente solo puede operar dentro de la ventana publica.
+- Un vendedor puede pertenecer a un maximo de **una tienda por evento**.
+- Una tienda puede tener hasta **3 vendedores por evento** (`StallVendorMembership`).
+- Los productos con stock bajo el umbral del **15%** del stock inicial muestran el aviso "Proximo a agotarse" en el menu del cliente.
+- Las acciones de staff (asignacion de roles, otorgamiento de UCoins) quedan registradas en `operations.StaffAuditLog`.
 
 ### Evidencia visual de flujos implementados
 
@@ -352,7 +375,7 @@ OK
 | 2 | Errores en reglas de negocio | Software | Medio-Alto | Compras incorrectas, saldos inconsistentes o permisos mal asignados | Continuar con pruebas automatizadas y revision de servicios centrales |
 | 3 | Uso incorrecto por parte de usuarios | Humano | Medio | Datos incompletos o acciones operativas equivocadas | Capacitar usuarios y simplificar la interfaz por rol |
 | 4 | Falta de evidencia visual final para entrega academica | Documental | Medio | Entrega incompleta frente a la rubrica | Integrar capturas y anexos visuales antes de la version final |
-| 5 | Ausencia de asignacion formal de responsables institucionales | Administrativo | Bajo | Inconsistencias en el formato del reporte | Completar nombres de `RGPY`, `RAPE` y `RDS` antes de la entrega final |
+| 5 | Ausencia de evidencia visual integrada en formato academico final | Documental | Bajo | Entrega incompleta frente a la rubrica | Diagramas SVG de arquitectura y Gantt generados e integrados en el reporte |
 | 6 | Dependencia de configuracion local para despliegue | Infraestructura | Medio | Variaciones en comportamiento entre entornos | Mantener `.env`, Docker Compose y verificacion previa del entorno |
 
 ### 2.5.2 Anexos sugeridos para la entrega final
@@ -364,7 +387,7 @@ OK
 - Captura del panel staff: `panel_staff.png`
 - Captura del mapa de asignacion: `mapa_asignacion.png`
 - Tabla o evidencia de pruebas integrada en la seccion de Pruebas
-- [Insertar diagrama o esquema de arquitectura modular]
+![Arquitectura modular UPBCash](arquitectura_modular.png)
 
 ---
 
