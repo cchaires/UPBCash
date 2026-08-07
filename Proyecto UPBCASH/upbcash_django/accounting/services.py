@@ -13,7 +13,6 @@ from .models import (
     LedgerTransaction,
     LedgerTxStatus,
     LedgerTxType,
-    StaffCreditGrant,
     TopupChannel,
     TopupRecord,
     TopupStatus,
@@ -114,8 +113,7 @@ class WalletService:
         tx_type,
         idempotency_key,
         created_by_user=None,
-        reference_model="",
-        reference_id="",
+        reference_object=None,
         entries,
     ):
         existing = LedgerTransaction.objects.filter(idempotency_key=idempotency_key).first()
@@ -128,8 +126,7 @@ class WalletService:
             status=LedgerTxStatus.POSTED,
             idempotency_key=idempotency_key,
             created_by_user=created_by_user,
-            reference_model=reference_model,
-            reference_id=str(reference_id or ""),
+            reference_object=reference_object,
         )
 
         amount_sum = Decimal("0.00")
@@ -139,7 +136,7 @@ class WalletService:
             LedgerEntry.objects.create(
                 transaction=tx,
                 account=account,
-                amount_mxn_signed=signed,
+                amount_ucoin_signed=signed,
                 description=description,
             )
 
@@ -198,8 +195,7 @@ class WalletService:
             tx_type=LedgerTxType.TOPUP_ONLINE,
             idempotency_key=f"topup_online:{event.id}:{topup.id}",
             created_by_user=user,
-            reference_model="topup_record",
-            reference_id=topup.id,
+            reference_object=topup,
             entries=[
                 (wallet_account, amount, "Aumento de saldo de usuario"),
                 (cash_account, -amount, "Entrada en caja por recarga"),
@@ -233,12 +229,6 @@ class WalletService:
             provider="cash",
             provider_ref="staff",
             staff_user=staff_user,
-        )
-        grant = StaffCreditGrant.objects.create(
-            event=event,
-            client_user=client_user,
-            staff_user=staff_user,
-            amount_ucoin=amount,
             reason=reason,
         )
 
@@ -249,19 +239,27 @@ class WalletService:
             tx_type=LedgerTxType.TOPUP_CASH,
             idempotency_key=f"topup_cash:{event.id}:{topup.id}",
             created_by_user=staff_user,
-            reference_model="topup_record",
-            reference_id=topup.id,
+            reference_object=topup,
             entries=[
                 (wallet_account, amount, "Aumento de saldo por recarga en efectivo"),
                 (cash_account, -amount, "Entrada en caja por staff"),
             ],
         )
         cls.apply_balance_delta(event=event, user=client_user, delta=amount)
-        return topup, grant
+        return topup
 
     @classmethod
     @transaction.atomic
-    def record_purchase(cls, *, event, user, amount_ucoin, reference_model, reference_id, created_by_user=None):
+    def record_purchase(
+        cls,
+        *,
+        event,
+        user,
+        amount_ucoin,
+        reference_object,
+        idempotency_ref_label,
+        created_by_user=None,
+    ):
         assert_event_writable(event)
         amount = _money(amount_ucoin)
         if amount <= 0:
@@ -274,8 +272,8 @@ class WalletService:
             event=event,
             user=user,
             amount_ucoin=amount,
-            reference_model=reference_model,
-            reference_id=reference_id,
+            reference_object=reference_object,
+            idempotency_ref_label=idempotency_ref_label,
             created_by_user=created_by_user or user,
             balance_cache=wallet_cache,
         )
@@ -287,8 +285,8 @@ class WalletService:
         event,
         user,
         amount_ucoin,
-        reference_model,
-        reference_id,
+        reference_object,
+        idempotency_ref_label,
         created_by_user=None,
         balance_cache=None,
     ):
@@ -297,7 +295,10 @@ class WalletService:
         if amount <= 0:
             raise ValueError("El monto de compra debe ser mayor a cero.")
         wallet_cache = balance_cache or cls.get_balance_cache_for_update(event=event, user=user)
-        idempotency_key = f"purchase:{event.id}:{reference_model}:{reference_id}"
+        # idempotency_ref_label se mantiene como string explicito (separado del GFK)
+        # para preservar el formato exacto de idempotency_key usado antes de introducir
+        # GenericForeignKey (ej. "sales_order") y no invalidar transacciones ya posteadas.
+        idempotency_key = f"purchase:{event.id}:{idempotency_ref_label}:{reference_object.pk}"
         tx_already_exists = LedgerTransaction.objects.filter(idempotency_key=idempotency_key).exists()
 
         _, revenue_account, _ = cls.ensure_platform_accounts(event=event)
@@ -307,8 +308,7 @@ class WalletService:
             tx_type=LedgerTxType.PURCHASE,
             idempotency_key=idempotency_key,
             created_by_user=created_by_user or user,
-            reference_model=reference_model,
-            reference_id=reference_id,
+            reference_object=reference_object,
             entries=[
                 (wallet_account, -amount, "Descuento de wallet por compra"),
                 (revenue_account, amount, "Reconocimiento de ingreso"),
@@ -335,8 +335,7 @@ class WalletService:
             tx_type=LedgerTxType.EXPIRY,
             idempotency_key=f"expiry:{event.id}:{user.id}:{timezone.now().date().isoformat()}",
             created_by_user=created_by_user,
-            reference_model="event_campaign",
-            reference_id=event.id,
+            reference_object=event,
             entries=[
                 (wallet_account, -amount, "Expiracion de saldo al cierre de evento"),
                 (expiry_account, amount, "Ingreso por expiracion"),
@@ -351,7 +350,7 @@ class WalletService:
         wallet_account = cls.ensure_user_wallet_account(event=event, user=user)
         total = (
             LedgerEntry.objects.filter(transaction__event=event, account=wallet_account)
-            .aggregate(total=Sum("amount_mxn_signed"))
+            .aggregate(total=Sum("amount_ucoin_signed"))
             .get("total")
             or Decimal("0.00")
         )

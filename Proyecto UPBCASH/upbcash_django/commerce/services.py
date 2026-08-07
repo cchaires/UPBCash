@@ -127,8 +127,8 @@ class CheckoutService:
             event=event,
             user=user,
             amount_ucoin=total,
-            reference_model="sales_order",
-            reference_id=order.id,
+            reference_object=order,
+            idempotency_ref_label="sales_order",
             created_by_user=user,
         )
 

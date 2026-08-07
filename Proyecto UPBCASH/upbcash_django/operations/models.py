@@ -1,5 +1,9 @@
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
+
+from common.models import EventScopedModel
 
 
 class SupportTicketStatus(models.TextChoices):
@@ -16,7 +20,7 @@ class SupportTicketType(models.TextChoices):
     OTHER = "other", "Otro"
 
 
-class SupportTicket(models.Model):
+class SupportTicket(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="support_tickets")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="support_tickets")
     ticket_type = models.CharField(max_length=32, choices=SupportTicketType.choices)
@@ -51,12 +55,22 @@ class SupportTicket(models.Model):
         return f"{self.event.code} - {self.summary}"
 
 
-class StaffAuditLog(models.Model):
+class StaffAuditLog(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="staff_audit_logs")
     staff_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="staff_audit_logs")
     action_type = models.CharField(max_length=64)
-    target_model = models.CharField(max_length=64)
-    target_id = models.CharField(max_length=64)
+    # Integridad referencial real via contenttypes en vez de strings sueltos
+    # (target_model/target_id). Misma limitacion documentada en
+    # accounting.LedgerTransaction: no hay FK real de BD hacia el objeto.
+    target_content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    target_object_id = models.PositiveIntegerField(null=True, blank=True)
+    target_object = GenericForeignKey("target_content_type", "target_object_id")
     payload_json = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -65,6 +79,7 @@ class StaffAuditLog(models.Model):
         indexes = [
             models.Index(fields=["event", "action_type", "created_at"]),
             models.Index(fields=["staff_user", "created_at"]),
+            models.Index(fields=["target_content_type", "target_object_id"]),
         ]
 
     def __str__(self):

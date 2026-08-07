@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from common.models import EventScopedModel
+
 
 class OrderStatus(models.TextChoices):
     PAID = "paid", "Pagado"
@@ -19,7 +21,7 @@ class DeliveryAction(models.TextChoices):
     REOPEN = "reopen", "Reabrir"
 
 
-class CartItem(models.Model):
+class CartItem(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="cart_items_v2")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cart_items_v2")
     stall_product = models.ForeignKey("stalls.StallProduct", on_delete=models.CASCADE, related_name="cart_items_v2")
@@ -43,7 +45,7 @@ class CartItem(models.Model):
         return f"{self.event.code} - {self.user.username} - {self.stall_product.display_name}"
 
 
-class SalesOrder(models.Model):
+class SalesOrder(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="sales_orders")
     buyer_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

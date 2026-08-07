@@ -81,7 +81,7 @@ class RedesignFlowTests(TestCase):
         client = self.user_model.objects.create_user(username="client2", password="secret")
         assign_group_to_user(event=self.event, user=staff, group_name="staff")
 
-        topup, grant = StaffOpsService.grant_ucoins(
+        topup = StaffOpsService.grant_ucoins(
             event=self.event,
             staff_user=staff,
             client_user=client,
@@ -89,27 +89,29 @@ class RedesignFlowTests(TestCase):
             reason="Pago en efectivo",
         )
         self.assertIsNotNone(topup.id)
-        self.assertIsNotNone(grant.id)
+        self.assertEqual(topup.reason, "Pago en efectivo")
         self.assertEqual(WalletService.get_balance(event=self.event, user=client), Decimal("40.00"))
 
     def test_purchase_idempotency_does_not_double_discount_balance(self):
         buyer = self.user_model.objects.create_user(username="buyer-idem", password="secret")
         WalletService.set_balance(event=self.event, user=buyer, balance=Decimal("100.00"))
 
+        # reference_object solo necesita tener un pk estable entre ambas llamadas
+        # para que la idempotency_key coincida; se usa self.event como stand-in.
         WalletService.record_purchase_mirror(
             event=self.event,
             user=buyer,
             amount_ucoin=Decimal("15.00"),
-            reference_model="sales_order",
-            reference_id=999,
+            reference_object=self.event,
+            idempotency_ref_label="sales_order",
             created_by_user=buyer,
         )
         WalletService.record_purchase_mirror(
             event=self.event,
             user=buyer,
             amount_ucoin=Decimal("15.00"),
-            reference_model="sales_order",
-            reference_id=999,
+            reference_object=self.event,
+            idempotency_ref_label="sales_order",
             created_by_user=buyer,
         )
         self.assertEqual(WalletService.get_balance(event=self.event, user=buyer), Decimal("85.00"))

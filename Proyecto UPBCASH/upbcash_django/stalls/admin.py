@@ -7,7 +7,6 @@ from .models import (
     ProductCategory,
     ProductSubcategory,
     Stall,
-    StallAssignment,
     StallLocationAssignment,
     StallProduct,
     StallVendorMembership,
@@ -55,7 +54,6 @@ class StallProductAdmin(admin.ModelAdmin):
 admin.site.register(MapZone)
 admin.site.register(MapSpot)
 admin.site.register(Stall)
-admin.site.register(StallAssignment)
 admin.site.register(StallVendorMembership)
 admin.site.register(StallLocationAssignment)
 admin.site.register(CatalogProduct)

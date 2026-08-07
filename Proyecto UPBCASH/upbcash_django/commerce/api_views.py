@@ -1,126 +1,91 @@
-import json
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-
+from common.permissions import HasAnyEventPermission, HasEventPermission, PublicWindowOpen
 from events.authz import (
     PERM_ACCESS_STAFF_PANEL,
     PERM_CHECKOUT_CART,
     PERM_VERIFY_ORDER_QR,
     build_authz_snapshot,
-    enforce_campaign_window_api,
-    enforce_permission_api,
-    enforce_public_window_api,
-    enforce_any_permission_api,
+    has_any_permission,
 )
 from events.models import EventCampaign
-from events.services import ensure_user_client_membership
 
 from .models import SalesOrder
-from .services import CheckoutService, FulfillmentService
+from .serializers import CheckoutSerializer, VerifyOrderQrSerializer
 
 
-def _json_body(request):
-    if not request.body:
-        return {}
-    try:
-        return json.loads(request.body.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return {}
+class CartCheckoutView(APIView):
+    permission_classes = [
+        IsAuthenticated,
+        HasEventPermission.for_permission(PERM_CHECKOUT_CART, "No cuentas con permisos para ejecutar checkout."),
+        PublicWindowOpen,
+    ]
+
+    def get_event(self):
+        return get_object_or_404(EventCampaign, id=self.kwargs["event_id"])
+
+    def post(self, request, event_id):
+        serializer = CheckoutSerializer(data=request.data, context={"request": request, "event": self.get_event()})
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response(
+            {
+                "ok": True,
+                "order": {
+                    "id": result["order_id"],
+                    "order_number": result["order_number"],
+                    "status": result["status"],
+                    "total_ucoin": str(result["total_ucoin"]),
+                },
+                "qr_token": result["qr_token"],
+            }
+        )
 
 
-@login_required(login_url="index")
-@require_POST
-def checkout_cart_api(request, event_id):
-    event = EventCampaign.objects.filter(id=event_id).first()
-    if not event:
-        return JsonResponse({"ok": False, "error": "Evento no encontrado."}, status=404)
+class VerifyOrderQrView(APIView):
+    """Verificacion de entrega por QR (staff o vendedor con permiso especifico).
 
-    snapshot = build_authz_snapshot(user=request.user, event=event)
-    auth_error = enforce_permission_api(
-        request=request,
-        permission=PERM_CHECKOUT_CART,
-        snapshot=snapshot,
-        denied_message="No cuentas con permisos para ejecutar checkout.",
-    )
-    if auth_error:
-        return auth_error
+    Replica el doble chequeo del endpoint original: primero un permiso general sin
+    evento especifico (para no revelar si la orden existe a alguien sin ningun
+    permiso relevante), y solo si eso pasa se busca la orden y se re-valida el
+    permiso y la ventana de campaña ya con el evento real de la orden.
+    """
 
-    public_error = enforce_public_window_api(
-        snapshot=snapshot,
-        message="La ventana publica del evento no esta activa para checkout.",
-    )
-    if public_error:
-        return public_error
+    permission_classes = [
+        IsAuthenticated,
+        HasAnyEventPermission.for_permissions(
+            [PERM_VERIFY_ORDER_QR, PERM_ACCESS_STAFF_PANEL],
+            "No cuentas con permisos para verificar entregas por QR.",
+        ),
+    ]
 
-    ensure_user_client_membership(user=request.user, event=event)
-    try:
-        order, qr_token = CheckoutService.checkout_cart(event=event, user=request.user)
-    except Exception as exc:  # noqa: BLE001
-        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    def post(self, request, order_id):
+        order = get_object_or_404(SalesOrder.objects.select_related("event"), id=order_id)
 
-    return JsonResponse(
-        {
-            "ok": True,
-            "order": {
-                "id": order.id,
-                "order_number": order.order_number,
-                "status": order.status,
-                "total_ucoin": str(order.total_ucoin),
+        snapshot = build_authz_snapshot(user=request.user, event=order.event)
+        if not has_any_permission(
+            user=request.user,
+            permissions=[PERM_VERIFY_ORDER_QR, PERM_ACCESS_STAFF_PANEL],
+            snapshot=snapshot,
+        ):
+            raise PermissionDenied("No cuentas con permisos para verificar entregas por QR.")
+        if not (snapshot.is_campaign_open or snapshot.is_superuser):
+            raise PermissionDenied("La ventana de campaña no esta activa para verificar QR.")
+
+        serializer = VerifyOrderQrSerializer(data=request.data, context={"request": request, "order": order})
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        is_valid = result["is_valid"]
+        return Response(
+            {
+                "ok": is_valid,
+                "order_id": result["order_id"],
+                "status": result["status"],
+                "error": "" if is_valid else "Token invalido o expirado.",
             },
-            "qr_token": qr_token,
-        }
-    )
-
-
-@login_required(login_url="index")
-@require_POST
-def verify_order_qr_api(request, order_id):
-    precheck_snapshot = build_authz_snapshot(user=request.user)
-    precheck_error = enforce_any_permission_api(
-        request=request,
-        permissions=[PERM_VERIFY_ORDER_QR, PERM_ACCESS_STAFF_PANEL],
-        snapshot=precheck_snapshot,
-        denied_message="No cuentas con permisos para verificar entregas por QR.",
-    )
-    if precheck_error:
-        return precheck_error
-
-    order = SalesOrder.objects.select_related("event").filter(id=order_id).first()
-    if not order:
-        return JsonResponse({"ok": False, "error": "Orden no encontrada."}, status=404)
-
-    snapshot = build_authz_snapshot(user=request.user, event=order.event)
-    auth_error = enforce_any_permission_api(
-        request=request,
-        permissions=[PERM_VERIFY_ORDER_QR, PERM_ACCESS_STAFF_PANEL],
-        snapshot=snapshot,
-        denied_message="No cuentas con permisos para verificar entregas por QR.",
-    )
-    if auth_error:
-        return auth_error
-
-    campaign_error = enforce_campaign_window_api(
-        snapshot=snapshot,
-        message="La ventana de campaña no esta activa para verificar QR.",
-    )
-    if campaign_error:
-        return campaign_error
-
-    body = _json_body(request)
-    token = (body.get("token") or request.POST.get("token", "")).strip()
-    try:
-        is_valid = FulfillmentService.verify_qr_and_deliver(order=order, raw_token=token, actor_user=request.user)
-    except Exception as exc:  # noqa: BLE001
-        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
-
-    return JsonResponse(
-        {
-            "ok": is_valid,
-            "order_id": order.id,
-            "status": order.status,
-            "error": "" if is_valid else "Token invalido o expirado.",
-        },
-        status=200 if is_valid else 400,
-    )
+            status=200 if is_valid else 400,
+        )

@@ -4,6 +4,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from common.models import EventScopedModel
+
 
 class MapSpotStatus(models.TextChoices):
     AVAILABLE = "available", "Disponible"
@@ -36,7 +38,7 @@ class ItemNature(models.TextChoices):
     NO_INVENTORIABLE = "no_inventoriable", "No inventariable"
 
 
-class MapZone(models.Model):
+class MapZone(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="map_zones")
     name = models.CharField(max_length=120)
     sort_order = models.PositiveIntegerField(default=0)
@@ -51,7 +53,7 @@ class MapZone(models.Model):
         return f"{self.event.code} - {self.name}"
 
 
-class MapSpot(models.Model):
+class MapSpot(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="map_spots")
     zone = models.ForeignKey(MapZone, on_delete=models.CASCADE, related_name="spots")
     label = models.CharField(max_length=64)
@@ -78,7 +80,7 @@ class MapSpot(models.Model):
             raise ValidationError({"y": "La coordenada y debe estar normalizada entre 0 y 1."})
 
 
-class Stall(models.Model):
+class Stall(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stalls")
     code = models.CharField(max_length=32)
     name = models.CharField(max_length=120)
@@ -100,40 +102,12 @@ class Stall(models.Model):
         return f"{self.event.code} - {self.name}"
 
 
-class StallAssignment(models.Model):
-    event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stall_assignments")
-    stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name="assignments")
-    vendor_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="vendor_stall_assignments",
-    )
-    spot = models.OneToOneField(MapSpot, on_delete=models.PROTECT, related_name="stall_assignment")
-    assigned_by_staff = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="staff_stall_assignments",
-    )
-    assigned_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-assigned_at", "-id"]
-        constraints = [
-            models.UniqueConstraint(fields=["event", "vendor_user"], name="uniq_vendor_per_event"),
-            models.UniqueConstraint(fields=["event", "spot"], name="uniq_spot_assignment_per_event"),
-            models.UniqueConstraint(fields=["event", "stall"], name="uniq_stall_assignment_per_event"),
-        ]
-
-    def __str__(self):
-        return f"{self.event.code} - {self.vendor_user.username} -> {self.stall.code}"
-
-
 class StallVendorRole(models.TextChoices):
     OWNER = "owner", "Propietario"
     MEMBER = "member", "Miembro"
 
 
-class StallVendorMembership(models.Model):
+class StallVendorMembership(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stall_vendor_memberships")
     stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name="vendor_memberships")
     vendor_user = models.ForeignKey(
@@ -166,7 +140,7 @@ class StallVendorMembership(models.Model):
         return f"{self.event.code} - {self.stall.code} - {self.vendor_user.username}"
 
 
-class StallLocationAssignment(models.Model):
+class StallLocationAssignment(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stall_location_assignments")
     stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name="location_assignments")
     spot = models.ForeignKey(MapSpot, on_delete=models.PROTECT, related_name="stall_location_assignments")
@@ -240,7 +214,7 @@ class CatalogProduct(models.Model):
         return self.name
 
 
-class StallProduct(models.Model):
+class StallProduct(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stall_products")
     stall = models.ForeignKey(Stall, on_delete=models.CASCADE, related_name="products")
     catalog_product = models.ForeignKey(CatalogProduct, on_delete=models.PROTECT, related_name="stall_products")
@@ -350,7 +324,7 @@ class StallProduct(models.Model):
         return self.stock_qty <= self.low_stock_threshold
 
 
-class StockMovement(models.Model):
+class StockMovement(EventScopedModel):
     event = models.ForeignKey("events.EventCampaign", on_delete=models.CASCADE, related_name="stock_movements")
     stall_product = models.ForeignKey(StallProduct, on_delete=models.CASCADE, related_name="stock_movements")
     movement_type = models.CharField(max_length=16, choices=StockMovementType.choices)

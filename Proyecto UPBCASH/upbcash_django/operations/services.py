@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.models import Group
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from accounting.services import WalletService
@@ -41,13 +42,26 @@ class StaffOpsService:
             raise StaffPermissionError("Solo staff puede ejecutar esta accion.")
 
     @classmethod
-    def _log_action(cls, *, event, staff_user, action_type, target_model, target_id, payload):
+    def _log_action(cls, *, event, staff_user, action_type, target_object, payload):
         return StaffAuditLog.objects.create(
             event=event,
             staff_user=staff_user,
             action_type=action_type,
-            target_model=target_model,
-            target_id=str(target_id),
+            target_object=target_object,
+            payload_json=payload or {},
+        )
+
+    @classmethod
+    def _log_action_for_deleted_object(cls, *, event, staff_user, action_type, target_model, target_id, payload):
+        """Variante para loguear un objeto que ya fue borrado de la BD (ej. delete_map_spot):
+        asigna content_type/object_id explicitos en vez de `target_object=instancia`, porque
+        la instancia ya no existe en la base de datos cuando se llama a este metodo."""
+        return StaffAuditLog.objects.create(
+            event=event,
+            staff_user=staff_user,
+            action_type=action_type,
+            target_content_type=ContentType.objects.get_for_model(target_model),
+            target_object_id=target_id,
             payload_json=payload or {},
         )
 
@@ -115,8 +129,10 @@ class StaffOpsService:
             event=event,
             staff_user=staff_user,
             action_type="sync_roles",
-            target_model="events.EventUserGroup",
-            target_id=target_user.id,
+            # Antes decia target_model="events.EventUserGroup" pero target_id era el id
+            # de un User, no de un EventUserGroup (bug preexistente) - se corrige apuntando
+            # al usuario real.
+            target_object=target_user,
             payload=payload,
         )
         return payload
@@ -132,8 +148,7 @@ class StaffOpsService:
             event=event,
             staff_user=staff_user,
             action_type="grant_role",
-            target_model="events.EventUserGroup",
-            target_id=assignment.id,
+            target_object=assignment,
             payload={
                 "target_user_id": target_user.id,
                 "group_name": group_name,
@@ -156,8 +171,8 @@ class StaffOpsService:
             event=event,
             staff_user=staff_user,
             action_type="revoke_role",
-            target_model="events.EventUserGroup",
-            target_id=target_user.id,
+            # Mismo bug preexistente que en sync_user_roles: corregido apuntando al User real.
+            target_object=target_user,
             payload={
                 "target_user_id": target_user.id,
                 "group_name": group_name,
@@ -238,8 +253,7 @@ class StaffOpsService:
             event=event,
             staff_user=staff_user,
             action_type="create_map_spot",
-            target_model="stalls.MapSpot",
-            target_id=spot.id,
+            target_object=spot,
             payload={"label": spot.label, "x": str(spot.x), "y": str(spot.y)},
         )
         return spot
@@ -265,8 +279,7 @@ class StaffOpsService:
                 event=event,
                 staff_user=staff_user,
                 action_type="update_map_spot",
-                target_model="stalls.MapSpot",
-                target_id=spot.id,
+                target_object=spot,
                 payload={"x": str(spot.x), "y": str(spot.y)},
             )
         return spot
@@ -283,11 +296,13 @@ class StaffOpsService:
         spot_id = spot.id
         label = spot.label
         spot.delete()
-        cls._log_action(
+        # El spot ya fue borrado (spot.delete() arriba): no se puede usar
+        # target_object=spot porque la instancia ya no existe en la BD.
+        cls._log_action_for_deleted_object(
             event=event,
             staff_user=staff_user,
             action_type="delete_map_spot",
-            target_model="stalls.MapSpot",
+            target_model=MapSpot,
             target_id=spot_id,
             payload={"label": label},
         )
@@ -375,8 +390,7 @@ class StaffOpsService:
             event=event,
             staff_user=staff_user,
             action_type="add_vendor_to_stall",
-            target_model="stalls.StallVendorMembership",
-            target_id=membership.id,
+            target_object=membership,
             payload={
                 "stall_id": stall.id,
                 "vendor_user_id": vendor_user.id,
@@ -426,8 +440,7 @@ class StaffOpsService:
             event=event,
             staff_user=staff_user,
             action_type="assign_spot_to_stall",
-            target_model="stalls.StallLocationAssignment",
-            target_id=assignment.id,
+            target_object=assignment,
             payload={
                 "stall_id": stall.id,
                 "spot_id": spot.id,
@@ -465,7 +478,7 @@ class StaffOpsService:
         cls._assert_staff(event=event, user=staff_user)
 
         amount = Decimal(amount_ucoin)
-        topup, grant = WalletService.grant_cash_topup(
+        topup = WalletService.grant_cash_topup(
             event=event,
             client_user=client_user,
             staff_user=staff_user,
@@ -476,8 +489,7 @@ class StaffOpsService:
             event=event,
             staff_user=staff_user,
             action_type="grant_ucoins",
-            target_model="accounting.StaffCreditGrant",
-            target_id=grant.id,
+            target_object=topup,
             payload={"client_user_id": client_user.id, "amount_ucoin": str(amount), "reason": reason},
         )
-        return topup, grant
+        return topup
