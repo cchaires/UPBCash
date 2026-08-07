@@ -249,3 +249,25 @@ class FulfillmentService:
             notes="Entrega total confirmada via QR.",
         )
         return True
+
+    @classmethod
+    @transaction.atomic
+    def mark_delivered_manually(cls, *, order, actor_user):
+        """Marca una orden como entregada sin verificar QR - respaldo manual /
+        modo de pruebas locales. El flujo real via QR (verify_qr_and_deliver)
+        sigue siendo el camino principal cuando se implemente el escaneo."""
+        if order.status == OrderStatus.CANCELLED:
+            raise ValueError("No se puede entregar una orden cancelada.")
+        if order.status == OrderStatus.DELIVERED:
+            return order  # idempotente: ya estaba entregada
+
+        order.status = OrderStatus.DELIVERED
+        order.delivered_at = timezone.now()
+        order.save(update_fields=["status", "delivered_at"])
+        OrderDeliveryLog.objects.create(
+            order=order,
+            action=DeliveryAction.MARK_DELIVERED,
+            performed_by_user=actor_user,
+            notes="Entrega manual (modo prueba, sin verificacion QR).",
+        )
+        return order

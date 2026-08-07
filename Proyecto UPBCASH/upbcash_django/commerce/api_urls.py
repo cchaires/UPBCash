@@ -5,4 +5,5 @@ from . import api_views
 urlpatterns = [
     path("events/<int:event_id>/cart/checkout", api_views.CartCheckoutView.as_view(), name="api_checkout_cart"),
     path("orders/<int:order_id>/qr/verify", api_views.VerifyOrderQrView.as_view(), name="api_verify_order_qr"),
+    path("orders/<int:order_id>/deliver", api_views.MarkOrderDeliveredView.as_view(), name="api_mark_order_delivered"),
 ]

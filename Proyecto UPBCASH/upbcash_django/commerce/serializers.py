@@ -46,3 +46,16 @@ class VerifyOrderQrSerializer(serializers.Serializer):
         is_valid = FulfillmentService.verify_qr_and_deliver(order=order, raw_token=token, actor_user=actor_user)
         order.refresh_from_db(fields=["status"])
         return {"order_id": order.id, "status": order.status, "is_valid": is_valid}
+
+
+class MarkOrderDeliveredSerializer(serializers.Serializer):
+    """No hace CRUD de modelo: delega en `FulfillmentService.mark_delivered_manually`."""
+
+    order_id = serializers.IntegerField(read_only=True)
+    status = serializers.CharField(read_only=True)
+
+    def create(self, validated_data):
+        order = FulfillmentService.mark_delivered_manually(
+            order=self.context["order"], actor_user=self.context["request"].user
+        )
+        return {"order_id": order.id, "status": order.status}

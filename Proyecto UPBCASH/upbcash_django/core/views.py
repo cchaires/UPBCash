@@ -1269,8 +1269,10 @@ def vendedor_ventas(request):
         qty = sum(item.quantity for item in order.items.all())
         sales_rows.append(
             {
+                "order_id": order.id,
                 "order_number": order.order_number,
-                "status": order.get_status_display(),
+                "status": order.status,
+                "status_display": order.get_status_display(),
                 "created_at": timezone.localtime(order.created_at),
                 "quantity": qty,
                 "total": order.total_ucoin,

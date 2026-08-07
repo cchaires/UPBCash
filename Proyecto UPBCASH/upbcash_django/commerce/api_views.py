@@ -15,7 +15,7 @@ from events.authz import (
 from events.models import EventCampaign
 
 from .models import SalesOrder
-from .serializers import CheckoutSerializer, VerifyOrderQrSerializer
+from .serializers import CheckoutSerializer, MarkOrderDeliveredSerializer, VerifyOrderQrSerializer
 
 
 class CartCheckoutView(APIView):
@@ -89,3 +89,28 @@ class VerifyOrderQrView(APIView):
             },
             status=200 if is_valid else 400,
         )
+
+
+class MarkOrderDeliveredView(APIView):
+    """Marca una orden como entregada sin QR - boton manual de vendedor_ventas.html
+    para pruebas locales / respaldo. Mismos permisos que VerifyOrderQrView."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, order_id):
+        order = get_object_or_404(SalesOrder.objects.select_related("event"), id=order_id)
+
+        snapshot = build_authz_snapshot(user=request.user, event=order.event)
+        if not has_any_permission(
+            user=request.user,
+            permissions=[PERM_VERIFY_ORDER_QR, PERM_ACCESS_STAFF_PANEL],
+            snapshot=snapshot,
+        ):
+            raise PermissionDenied("No cuentas con permisos para marcar entregas.")
+        if not (snapshot.is_campaign_open or snapshot.is_superuser):
+            raise PermissionDenied("La ventana de campaña no esta activa para marcar entregas.")
+
+        serializer = MarkOrderDeliveredSerializer(data=request.data, context={"request": request, "order": order})
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response({"ok": True, "order_id": result["order_id"], "status": result["status"]})

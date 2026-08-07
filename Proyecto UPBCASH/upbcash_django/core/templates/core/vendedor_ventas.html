@@ -14,10 +14,15 @@
 <section class="panel">
   <div class="menu-grid">
     {% for sale in sales_rows %}
-    <article class="menu-item">
+    <article class="menu-item" data-order-id="{{ sale.order_id }}">
       <div class="item__name">Ticket #{{ sale.order_number }}</div>
-      <div class="item__desc">{{ sale.created_at|date:"d M H:i" }} · {{ sale.quantity }} articulos · {{ sale.status }}</div>
-      <div class="item__price"><span>${{ sale.total|floatformat:2 }}</span></div>
+      <div class="item__desc">{{ sale.created_at|date:"d M H:i" }} · {{ sale.quantity }} articulos · <span class="js-status">{{ sale.status_display }}</span></div>
+      <div class="item__price">
+        <span>${{ sale.total|floatformat:2 }}</span>
+        {% if sale.status != "delivered" and sale.status != "cancelled" %}
+        <button type="button" class="btn btn--secondary js-deliver-btn" data-order-id="{{ sale.order_id }}">Entregar</button>
+        {% endif %}
+      </div>
     </article>
     {% empty %}
     <article class="menu-item">
@@ -28,4 +33,51 @@
     {% endfor %}
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  }
+
+  async function apiCall(url, method = 'GET', payload = null) {
+    const init = {
+      method,
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Accept': 'application/json'
+      }
+    };
+    if (payload !== null) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(payload);
+    }
+    const resp = await fetch(url, init);
+    const data = await resp.json();
+    if (!resp.ok || data.ok === false) {
+      throw new Error(data.error || 'Error en la operacion');
+    }
+    return data;
+  }
+
+  document.querySelectorAll('.js-deliver-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const orderId = btn.dataset.orderId;
+      btn.disabled = true;
+      try {
+        await apiCall(`/api/orders/${orderId}/deliver`, 'POST', {});
+        const card = btn.closest('[data-order-id]');
+        card.querySelector('.js-status').textContent = 'Entregado';
+        btn.remove();
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+</script>
 {% endblock %}
