@@ -1,0 +1,143 @@
+{% extends 'core/layouts/admin_shell.html' %}
+
+{% block title %}UPBCash - Reporte de productos{% endblock %}
+
+{% block content %}
+<header class="main__header">
+  <div class="title-block">
+    <h1 class="page-title">Reporte de productos</h1>
+    <p class="page-subtitle">Que se vende, que no rota y que esta por agotarse.</p>
+  </div>
+  <div class="status-pill">{% if event %}{{ event.name }}{% else %}Sin evento{% endif %}</div>
+</header>
+
+{% include 'core/includes/admin_event_picker.html' %}
+
+<section class="card stats-grid mt-14">
+  <article class="stat-card"><div class="item__name">Productos activos</div><div class="item__desc">Catalogo publicado</div><div class="item__price"><span>{{ products.active_products }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Con ventas</div><div class="item__desc">Al menos una unidad vendida</div><div class="item__price"><span>{{ products.sold_products }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Sin ventas</div><div class="item__desc">Activos que no han vendido</div><div class="item__price"><span>{{ products.unsold_products }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Bajo inventario</div><div class="item__desc">Por debajo del umbral</div><div class="item__price"><span>{{ products.low_stock }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Agotados</div><div class="item__desc">Sin existencia o marcados</div><div class="item__price"><span>{{ products.sold_out }}</span></div></article>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Productos mas vendidos</h2>
+  <p class="helper mt-0">El margen es estimado: la orden congela el precio de venta pero no el costo, asi que se compara contra el costo vigente del catalogo y se omiten los productos ya eliminados.</p>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead>
+        <tr><th>#</th><th>Producto</th><th>Quiosco</th><th>Unidades</th><th>Ingreso</th><th>Ordenes</th><th>Precio prom.</th><th>Margen est.</th></tr>
+      </thead>
+      <tbody>
+        {% for row in product_rows %}
+        <tr>
+          <td>{{ row.rank }}</td>
+          <td>
+            <div class="item__name">{{ row.product_name }}</div>
+            {% if row.is_deleted_product %}<div class="item__desc">Producto eliminado del catalogo</div>{% endif %}
+          </td>
+          <td>{{ row.stall_name }}</td>
+          <td>{{ row.units }}</td>
+          <td>{{ row.revenue|floatformat:2 }} UC</td>
+          <td>{{ row.orders }}</td>
+          <td>{{ row.average_price|floatformat:2 }}</td>
+          <td>{{ row.margin|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8">Sin ventas registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Ventas por categoria</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Categoria</th><th>Subcategoria</th><th>Unidades</th><th>Ingreso</th><th>% del ingreso</th></tr></thead>
+      <tbody>
+        {% for row in category_rows %}
+        <tr>
+          <td>{{ row.category }}</td>
+          <td>{{ row.subcategory }}</td>
+          <td>{{ row.units }}</td>
+          <td>{{ row.revenue|floatformat:2 }} UC</td>
+          <td>{{ row.revenue_share }}%</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Sin ventas clasificadas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Bajo inventario</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Producto</th><th>Quiosco</th><th>Existencia</th><th>Umbral</th><th>Inventario base</th><th>% vendido</th></tr></thead>
+      <tbody>
+        {% for row in low_stock_rows %}
+        <tr>
+          <td>{{ row.product_name }}</td>
+          <td>{{ row.stall_name }}</td>
+          <td class="text-warning">{{ row.stock_qty }}</td>
+          <td>{{ row.low_stock_threshold }}</td>
+          <td>{{ row.stock_base_qty|default_if_none:"-" }}</td>
+          <td>{{ row.sold_share }}%</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">Ningun producto por debajo de su umbral.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Agotados</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Producto</th><th>Quiosco</th><th>Motivo</th><th>Inventario base</th></tr></thead>
+      <tbody>
+        {% for row in sold_out_rows %}
+        <tr>
+          <td>{{ row.product_name }}</td>
+          <td>{{ row.stall_name }}</td>
+          <td class="text-error">{{ row.reason }}</td>
+          <td>{{ row.stock_base_qty|default_if_none:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Ningun producto agotado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Productos sin ventas</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Producto</th><th>Quiosco</th><th>Categoria</th><th>Precio</th><th>Existencia</th><th>Naturaleza</th></tr></thead>
+      <tbody>
+        {% for row in unsold_rows %}
+        <tr>
+          <td>{{ row.product_name }}</td>
+          <td>{{ row.stall_name }}</td>
+          <td>{{ row.category }}</td>
+          <td>{{ row.price|floatformat:2 }} UC</td>
+          <td>{{ row.stock_qty|default_if_none:"Ilimitado" }}</td>
+          <td>{{ row.item_nature_display }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">Todos los productos activos han vendido al menos una unidad.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

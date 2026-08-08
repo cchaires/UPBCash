@@ -1,0 +1,30 @@
+{% comment %}
+Selector de evento + descarga CSV, compartido por las pantallas de reporte.
+Espera en contexto: available_events, selected_event_id, active_event_id y
+opcionalmente csv_reports (lista de {slug, label}).
+{% endcomment %}
+<section class="card mt-14">
+  <form class="form filter-row" method="get">
+    <div class="field">
+      <label for="event">Evento</label>
+      <select class="input" id="event" name="event">
+        {% for campaign in available_events %}
+        <option value="{{ campaign.id }}" {% if campaign.id == selected_event_id %}selected{% endif %}>
+          {{ campaign.code }} - {{ campaign.name }}{% if campaign.id == active_event_id %} (activo){% endif %}
+        </option>
+        {% empty %}
+        <option value="">No hay eventos registrados</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn--secondary" type="submit">Ver reporte</button>
+      {% for csv_report in csv_reports %}
+      <a class="btn btn--ghost" href="{% url 'admin_reportes_export' csv_report.slug %}{% if selected_event_id %}?event={{ selected_event_id }}{% endif %}">{{ csv_report.label }}</a>
+      {% endfor %}
+    </div>
+  </form>
+  {% if not event %}
+  <p class="helper mb-0">No hay evento seleccionado ni evento activo. Los reportes apareceran vacios.</p>
+  {% endif %}
+</section>

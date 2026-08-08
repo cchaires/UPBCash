@@ -4,18 +4,67 @@
 
 {% block content %}
 <header class="main__header">
-  <div>
+  <div class="title-block">
     <h1 class="page-title">Dashboard</h1>
     {% if event %}<p class="page-subtitle">Resumen general de {{ event.name }}.</p>{% else %}<p class="page-subtitle">No hay evento activo configurado.</p>{% endif %}
   </div>
+  <div class="status-pill">{% if event %}{{ event.code }}{% else %}Sin evento{% endif %}</div>
 </header>
 
-<section class="card">
-  <div class="menu-grid">
-    <article class="menu-item"><div class="item__name">Ventas totales</div><div class="item__desc">Actualizado hoy</div><div class="item__price"><span>${{ total_sales|floatformat:2 }}</span></div></article>
-    <article class="menu-item"><div class="item__name">Compradores activos</div><div class="item__desc">Clientes con compras registradas</div><div class="item__price"><span>{{ active_buyers }}</span></div></article>
-    <article class="menu-item"><div class="item__name">Quioscos operando</div><div class="item__desc">Estado actual</div><div class="item__price"><span>{{ stalls_operating }}</span></div></article>
-    <article class="menu-item"><div class="item__name">Alertas</div><div class="item__desc">Productos con inventario bajo</div><div class="item__price"><span>{{ low_stock_alerts }}</span></div></article>
+{% include 'core/includes/admin_event_picker.html' %}
+
+<section class="card stats-grid mt-14">
+  <article class="stat-card"><div class="item__name">Ingreso total</div><div class="item__desc">Excluye ordenes canceladas</div><div class="item__price"><span>{{ sales.revenue|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Ordenes</div><div class="item__desc">Ticket promedio {{ sales.average_ticket|floatformat:2 }} UC</div><div class="item__price"><span>{{ sales.orders }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Compradores activos</div><div class="item__desc">Clientes con compras registradas</div><div class="item__price"><span>{{ sales.buyers }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Articulos vendidos</div><div class="item__desc">Unidades del evento</div><div class="item__price"><span>{{ sales.units }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Saldo circulante</div><div class="item__desc">{{ wallet.redemption_rate }}% de lo recargado ya se gasto</div><div class="item__price"><span>{{ wallet.outstanding|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Quioscos operando</div><div class="item__desc">Estado actual</div><div class="item__price"><span>{{ stalls_operating }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Pendientes de entrega</div><div class="item__desc">{{ fulfillment.pending_amount|floatformat:2 }} UC comprometidos</div><div class="item__price"><span>{{ fulfillment.pending }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Alertas</div><div class="item__desc">Bajo inventario · {{ products.sold_out }} agotados</div><div class="item__price"><span>{{ products.low_stock }}</span></div></article>
+</section>
+
+<section class="card mt-14">
+  <div class="section-header">
+    <h2 class="page-title staff-section-title">Quioscos que mas vendieron</h2>
+    <a class="link-inline" href="{% url 'admin_reportes_ventas' %}{% if selected_event_id %}?event={{ selected_event_id }}{% endif %}">Ver reporte completo</a>
+  </div>
+  <div class="list">
+    {% for row in top_stalls %}
+    <article class="list-item">
+      <div>
+        <div class="list-item__title">{{ row.rank }}. {{ row.stall_name }}</div>
+        <div class="list-item__meta">{{ row.orders }} ordenes · {{ row.units }} unidades · {{ row.revenue_share }}% del ingreso</div>
+      </div>
+      <div class="list-item__price">{{ row.revenue|floatformat:2 }} UC</div>
+    </article>
+    {% empty %}
+    <article class="list-item">
+      <div><div class="list-item__title">Sin ventas registradas</div><div class="list-item__meta">Aun no hay ordenes en este evento.</div></div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card mt-14">
+  <div class="section-header">
+    <h2 class="page-title staff-section-title">Productos mas vendidos</h2>
+    <a class="link-inline" href="{% url 'admin_reportes_productos' %}{% if selected_event_id %}?event={{ selected_event_id }}{% endif %}">Ver reporte completo</a>
+  </div>
+  <div class="list">
+    {% for row in top_products %}
+    <article class="list-item">
+      <div>
+        <div class="list-item__title">{{ row.rank }}. {{ row.product_name }}</div>
+        <div class="list-item__meta">{{ row.stall_name }} · {{ row.units }} unidades · {{ row.orders }} ordenes</div>
+      </div>
+      <div class="list-item__price">{{ row.revenue|floatformat:2 }} UC</div>
+    </article>
+    {% empty %}
+    <article class="list-item">
+      <div><div class="list-item__title">Sin productos vendidos</div><div class="list-item__meta">Aun no hay lineas de venta en este evento.</div></div>
+    </article>
+    {% endfor %}
   </div>
 </section>
 {% endblock %}

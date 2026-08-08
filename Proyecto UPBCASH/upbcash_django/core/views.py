@@ -1,3 +1,4 @@
+import csv
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -11,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q, Sum
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
 from django.urls import reverse
@@ -38,6 +40,7 @@ from events.authz import (
 )
 from events.models import CampaignStatus, EventCampaign, EventMembership, EventUserGroup, ProfileType
 from events.services import ensure_user_client_membership, get_active_campaign, validate_campaign_windows
+from operations import reports
 from operations.models import StaffAuditLog, SupportTicket, SupportTicketType
 from operations.services import StaffOpsService, StaffPermissionError
 from stalls.models import (
@@ -1647,44 +1650,331 @@ def staff_mapa_asignacion(request):
     return render(request, "core/staff_mapa_asignacion.html", context)
 
 
+def _admin_report_event(request):
+    """Evento sobre el que se construye el reporte.
+
+    Toma `?event=<id>` cuando apunta a una campana existente y si no cae al
+    evento activo. Es independiente del evento usado para autorizar: a estas
+    vistas solo llega el superusuario, asi que puede consultar historico
+    cerrado sin alterar la semantica de `build_authz_snapshot`.
+    """
+    raw_event_id = (request.GET.get("event") or "").strip()
+    if raw_event_id.isdigit():
+        selected_event = EventCampaign.objects.filter(pk=int(raw_event_id)).first()
+        if selected_event:
+            return selected_event
+    return get_active_campaign()
+
+
+def _admin_report_context(request, report_event):
+    """Contexto comun a las pantallas de reporte (selector de evento incluido)."""
+    active_event = get_active_campaign()
+    return {
+        "user_display_name": _user_display_name(request.user),
+        "event": report_event,
+        "available_events": EventCampaign.objects.all(),
+        "selected_event_id": report_event.id if report_event else None,
+        "active_event_id": active_event.id if active_event else None,
+    }
+
+
 @login_required(login_url="index")
 def admin_inicio(request):
     event, snapshot = _active_event_with_membership(request.user)
     role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
     if role_redirect:
         return role_redirect
-    orders_qs = SalesOrder.objects.none()
-    stalls_qs = Stall.objects.none()
-    if event:
-        orders_qs = SalesOrder.objects.filter(event=event)
-        stalls_qs = Stall.objects.filter(event=event)
 
-    total_sales = (
-        orders_qs.exclude(status=OrderStatus.CANCELLED).aggregate(total=Sum("total_ucoin")).get("total")
-        or Decimal("0.00")
+    report_event = _admin_report_event(request)
+    sales = reports.sales_kpis(event=report_event)
+    wallet = reports.wallet_summary(event=report_event)
+    fulfillment = reports.fulfillment_summary(event=report_event)
+    products = reports.product_kpis(event=report_event)
+    stalls_operating = (
+        Stall.objects.filter(event=report_event, status=StallStatus.OPEN).count() if report_event else 0
     )
-    active_buyers = orders_qs.values("buyer_user_id").distinct().count()
-    stalls_operating = stalls_qs.filter(status=StallStatus.OPEN).count()
-    low_stock_alerts = StallProduct.objects.filter(
-        event=event,
-        is_active=True,
-        is_sold_out_manual=False,
-        item_nature=ItemNature.INVENTORIABLE,
-        stock_mode=StockMode.FINITE,
-        low_stock_threshold__isnull=False,
-        stock_qty__gt=0,
-        stock_qty__lte=F("low_stock_threshold"),
-    ).count() if event else 0
 
-    context = {
-        "user_display_name": _user_display_name(request.user),
-        "event": event,
-        "total_sales": total_sales,
-        "active_buyers": active_buyers,
-        "stalls_operating": stalls_operating,
-        "low_stock_alerts": low_stock_alerts,
-    }
+    context = _admin_report_context(request, report_event)
+    context.update(
+        {
+            "sales": sales,
+            "wallet": wallet,
+            "fulfillment": fulfillment,
+            "products": products,
+            "stalls_operating": stalls_operating,
+            "top_stalls": reports.sales_by_stall(event=report_event)[:5],
+            "top_products": reports.top_products(event=report_event, limit=5),
+        }
+    )
     return render(request, "core/admin_inicio.html", context)
+
+
+@login_required(login_url="index")
+def admin_reportes_ventas(request):
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+
+    report_event = _admin_report_event(request)
+    context = _admin_report_context(request, report_event)
+    context.update(
+        {
+            "csv_reports": [{"slug": "ventas", "label": "Descargar CSV"}],
+            "sales": reports.sales_kpis(event=report_event),
+            "stall_rows": reports.sales_by_stall(event=report_event),
+            "day_rows": reports.sales_by_day(event=report_event),
+            "status_rows": reports.orders_by_status(event=report_event),
+        }
+    )
+    return render(request, "core/admin_reportes_ventas.html", context)
+
+
+@login_required(login_url="index")
+def admin_reportes_productos(request):
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+
+    report_event = _admin_report_event(request)
+    context = _admin_report_context(request, report_event)
+    context.update(
+        {
+            "csv_reports": [
+                {"slug": "productos", "label": "CSV productos"},
+                {"slug": "inventario", "label": "CSV inventario"},
+            ],
+            "products": reports.product_kpis(event=report_event),
+            "product_rows": reports.top_products(event=report_event),
+            "category_rows": reports.sales_by_category(event=report_event),
+            "unsold_rows": reports.products_without_sales(event=report_event),
+            "low_stock_rows": reports.low_stock_products(event=report_event),
+            "sold_out_rows": reports.sold_out_products(event=report_event),
+        }
+    )
+    return render(request, "core/admin_reportes_productos.html", context)
+
+
+@login_required(login_url="index")
+def admin_reportes_clientes(request):
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+
+    report_event = _admin_report_event(request)
+    context = _admin_report_context(request, report_event)
+    context.update(
+        {
+            "csv_reports": [{"slug": "clientes", "label": "Descargar CSV"}],
+            "buyer_rows": reports.top_buyers(event=report_event),
+            "topups": reports.topup_summary(event=report_event),
+            "wallet": reports.wallet_summary(event=report_event),
+            "audience": reports.audience_summary(event=report_event),
+        }
+    )
+    return render(request, "core/admin_reportes_clientes.html", context)
+
+
+@login_required(login_url="index")
+def admin_reportes_operacion(request):
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+
+    report_event = _admin_report_event(request)
+    context = _admin_report_context(request, report_event)
+    context.update(
+        {
+            "csv_reports": [{"slug": "operacion", "label": "Descargar CSV"}],
+            "fulfillment": reports.fulfillment_summary(event=report_event),
+            "status_rows": reports.orders_by_status(event=report_event),
+            "support": reports.support_summary(event=report_event),
+            "staff": reports.staff_activity(event=report_event),
+            "snapshot": reports.operations_snapshot(event=report_event),
+        }
+    )
+    return render(request, "core/admin_reportes_operacion.html", context)
+
+
+def _csv_rows_ventas(event):
+    header = [
+        "Posicion",
+        "Codigo quiosco",
+        "Quiosco",
+        "Estado",
+        "Espacio",
+        "Vendedores",
+        "Ingreso ucoin",
+        "Ordenes",
+        "Unidades",
+        "Compradores",
+        "Ticket promedio",
+        "% del ingreso",
+        "Margen estimado",
+        "Ordenes canceladas",
+    ]
+    rows = [
+        [
+            row["rank"],
+            row["stall_code"],
+            row["stall_name"],
+            row["status_display"],
+            row["spot_label"],
+            row["vendors_display"],
+            row["revenue"],
+            row["orders"],
+            row["units"],
+            row["buyers"],
+            row["average_ticket"],
+            row["revenue_share"],
+            row["margin"],
+            row["cancelled_orders"],
+        ]
+        for row in reports.sales_by_stall(event=event)
+    ]
+    return header, rows
+
+
+def _csv_rows_productos(event):
+    header = [
+        "Posicion",
+        "Producto",
+        "Quiosco",
+        "Unidades",
+        "Ingreso ucoin",
+        "Ordenes",
+        "Precio promedio",
+        "Margen estimado",
+        "Producto eliminado",
+    ]
+    rows = [
+        [
+            row["rank"],
+            row["product_name"],
+            row["stall_name"],
+            row["units"],
+            row["revenue"],
+            row["orders"],
+            row["average_price"],
+            row["margin"],
+            "si" if row["is_deleted_product"] else "no",
+        ]
+        for row in reports.top_products(event=event)
+    ]
+    return header, rows
+
+
+def _csv_rows_clientes(event):
+    header = [
+        "Posicion",
+        "Usuario",
+        "Email",
+        "Perfil",
+        "Gasto ucoin",
+        "Ordenes",
+        "Unidades",
+        "Ticket promedio",
+    ]
+    rows = [
+        [
+            row["rank"],
+            row["username"],
+            row["email"],
+            row["profile_type"],
+            row["spent"],
+            row["orders"],
+            row["units"],
+            row["average_ticket"],
+        ]
+        for row in reports.top_buyers(event=event)
+    ]
+    return header, rows
+
+
+def _csv_rows_inventario(event):
+    header = ["Tipo", "Producto", "Quiosco", "Existencia", "Umbral", "Inventario base", "% vendido"]
+    rows = [
+        ["Bajo inventario", row["product_name"], row["stall_name"], row["stock_qty"], row["low_stock_threshold"], row["stock_base_qty"], row["sold_share"]]
+        for row in reports.low_stock_products(event=event)
+    ]
+    rows += [
+        ["Agotado", row["product_name"], row["stall_name"], 0, "", row["stock_base_qty"], row["reason"]]
+        for row in reports.sold_out_products(event=event)
+    ]
+    return header, rows
+
+
+def _csv_rows_operacion(event):
+    header = ["Indicador", "Valor"]
+    fulfillment = reports.fulfillment_summary(event=event)
+    support = reports.support_summary(event=event)
+    snapshot = reports.operations_snapshot(event=event)
+    rows = [
+        ["Ordenes pendientes de entrega", fulfillment["pending"]],
+        ["Monto pendiente de entrega", fulfillment["pending_amount"]],
+        ["Ordenes entregadas", fulfillment["delivered"]],
+        ["Entregas parciales", fulfillment["partially_delivered"]],
+        ["Ordenes canceladas", fulfillment["cancelled"]],
+        ["Tiempo promedio de entrega (min)", fulfillment["average_delivery_minutes"] or ""],
+        ["Tasa de entrega (%)", fulfillment["delivery_rate"]],
+        ["Tickets de soporte", support["total"]],
+        ["Tickets abiertos", support["open"]],
+        ["Espacios en mapa", snapshot["spots_total"]],
+        ["Quioscos", snapshot["stalls_total"]],
+        ["Quioscos con espacio asignado", snapshot["assigned_stalls"]],
+        ["Vendedores asignados", snapshot["vendors_assigned"]],
+        ["Carritos activos", snapshot["active_carts"]],
+        ["Valor retenido en carritos", snapshot["active_cart_value"]],
+    ]
+    rows += [[f"Espacios - {row['label']}", row["total"]] for row in snapshot["spots_by_status"]]
+    rows += [[f"Quioscos - {row['label']}", row["total"]] for row in snapshot["stalls_by_status"]]
+    return header, rows
+
+
+#: Reportes exportables: slug -> (etiqueta de archivo, constructor de filas).
+ADMIN_CSV_REPORTS = {
+    "ventas": ("ventas-por-quiosco", _csv_rows_ventas),
+    "productos": ("productos-vendidos", _csv_rows_productos),
+    "clientes": ("clientes", _csv_rows_clientes),
+    "inventario": ("inventario", _csv_rows_inventario),
+    "operacion": ("operacion", _csv_rows_operacion),
+}
+
+
+@login_required(login_url="index")
+def admin_reportes_export(request, report):
+    """Descarga en CSV cualquiera de los reportes de `ADMIN_CSV_REPORTS`.
+
+    Se usa `HttpResponse` y no `StreamingHttpResponse` porque los volumenes son
+    por evento (cientos de filas). El BOM inicial hace que Excel respete los
+    acentos al abrir el archivo directamente.
+    """
+    event, snapshot = _active_event_with_membership(request.user)
+    role_redirect = _redirect_if_no_admin_access(request, snapshot=snapshot)
+    if role_redirect:
+        return role_redirect
+
+    report_definition = ADMIN_CSV_REPORTS.get(report)
+    if not report_definition:
+        raise Http404("Reporte no disponible.")
+
+    file_label, build_rows = report_definition
+    report_event = _admin_report_event(request)
+    header, rows = build_rows(report_event)
+
+    event_suffix = slugify(report_event.code) if report_event else "sin-evento"
+    filename = f"{file_label}-{event_suffix}.csv"
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("﻿")
+
+    writer = csv.writer(response)
+    writer.writerow(header)
+    writer.writerows(rows)
+    return response
 
 
 @login_required(login_url="index")

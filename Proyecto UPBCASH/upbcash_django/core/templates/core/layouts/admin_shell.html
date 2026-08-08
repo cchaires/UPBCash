@@ -2,18 +2,24 @@
 {% load static %}
 
 {% block role_nav %}
-{% with current=request.resolver_match.url_name %}
-<a class="nav__item {% if current == 'admin_inicio' %}nav__item--active{% endif %}" href="{% url 'admin_inicio' %}">
+{% with current=request.resolver_match.url_name event_query=selected_event_id|default_if_none:'' %}
+<a class="nav__item {% if current == 'admin_inicio' %}nav__item--active{% endif %}" href="{% url 'admin_inicio' %}{% if event_query %}?event={{ event_query }}{% endif %}">
   <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#home"></use></svg><span>Inicio</span>
+</a>
+<a class="nav__item {% if current == 'admin_reportes_ventas' %}nav__item--active{% endif %}" href="{% url 'admin_reportes_ventas' %}{% if event_query %}?event={{ event_query }}{% endif %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#chart"></use></svg><span>Ventas</span>
+</a>
+<a class="nav__item {% if current == 'admin_reportes_productos' %}nav__item--active{% endif %}" href="{% url 'admin_reportes_productos' %}{% if event_query %}?event={{ event_query }}{% endif %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#store"></use></svg><span>Productos</span>
+</a>
+<a class="nav__item {% if current == 'admin_reportes_clientes' %}nav__item--active{% endif %}" href="{% url 'admin_reportes_clientes' %}{% if event_query %}?event={{ event_query }}{% endif %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#user"></use></svg><span>Clientes</span>
+</a>
+<a class="nav__item {% if current == 'admin_reportes_operacion' %}nav__item--active{% endif %}" href="{% url 'admin_reportes_operacion' %}{% if event_query %}?event={{ event_query }}{% endif %}">
+  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#report"></use></svg><span>Operacion</span>
 </a>
 <a class="nav__item {% if current == 'admin_mapa' %}nav__item--active{% endif %}" href="{% url 'admin_mapa' %}">
   <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#map"></use></svg><span>Mapa</span>
-</a>
-<a class="nav__item" href="{% url 'vendedor_ventas' %}">
-  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#chart"></use></svg><span>Ventas</span>
-</a>
-<a class="nav__item" href="{% url 'vendedor_productos' %}">
-  <svg class="nav__icon" aria-hidden="true"><use href="{% static 'core/icons/sprite.svg' %}#store"></use></svg><span>Quioscos</span>
 </a>
 {% endwith %}
 {% endblock %}

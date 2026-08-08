@@ -1,0 +1,121 @@
+{% extends 'core/layouts/admin_shell.html' %}
+
+{% block title %}UPBCash - Reporte de clientes{% endblock %}
+
+{% block content %}
+<header class="main__header">
+  <div class="title-block">
+    <h1 class="page-title">Reporte de clientes</h1>
+    <p class="page-subtitle">Quien compra, cuanto se recargo y cuanto saldo sigue circulando.</p>
+  </div>
+  <div class="status-pill">{% if event %}{{ event.name }}{% else %}Sin evento{% endif %}</div>
+</header>
+
+{% include 'core/includes/admin_event_picker.html' %}
+
+<section class="card stats-grid mt-14">
+  <article class="stat-card"><div class="item__name">Recargado</div><div class="item__desc">{{ topups.total_count }} recargas exitosas</div><div class="item__price"><span>{{ wallet.topped_up|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Gastado</div><div class="item__desc">{{ wallet.redemption_rate }}% de lo recargado</div><div class="item__price"><span>{{ wallet.spent|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Saldo circulante</div><div class="item__desc">{{ wallet.wallets_with_balance }} carteras con saldo</div><div class="item__price"><span>{{ wallet.outstanding|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Miembros</div><div class="item__desc">{{ audience.buyers }} compraron ({{ audience.conversion_rate }}%)</div><div class="item__price"><span>{{ audience.members }}</span></div></article>
+</section>
+
+{% if wallet.unreconciled %}
+<section class="card mt-14">
+  <p class="helper mb-0 text-warning">
+    Descuadre de {{ wallet.unreconciled|floatformat:2 }} UC entre el saldo en carteras y lo esperado
+    ({{ wallet.expected_outstanding|floatformat:2 }} UC = recargado - gastado). Suele indicar ajustes manuales
+    o expiraciones registradas en el ledger.
+  </p>
+</section>
+{% endif %}
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Compradores principales</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>#</th><th>Usuario</th><th>Perfil</th><th>Gasto</th><th>Ordenes</th><th>Unidades</th><th>Ticket prom.</th></tr></thead>
+      <tbody>
+        {% for row in buyer_rows %}
+        <tr>
+          <td>{{ row.rank }}</td>
+          <td>
+            <div class="item__name">{{ row.username }}</div>
+            <div class="item__desc">{{ row.email|default:"Sin email" }}</div>
+          </td>
+          <td>{{ row.profile_type }}</td>
+          <td>{{ row.spent|floatformat:2 }} UC</td>
+          <td>{{ row.orders }}</td>
+          <td>{{ row.units }}</td>
+          <td>{{ row.average_ticket|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">Sin compras registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Recargas por canal</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Canal</th><th>Monto</th><th>Recargas</th><th>% del monto</th></tr></thead>
+      <tbody>
+        {% for row in topups.by_channel %}
+        <tr>
+          <td>{{ row.channel_display }}</td>
+          <td>{{ row.amount|floatformat:2 }} UC</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.amount_share }}%</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Sin recargas registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="helper mb-0">
+    Recarga promedio {{ topups.average_amount|floatformat:2 }} UC ·
+    {{ topups.pending_count }} pendientes · {{ topups.failed_count }} fallidas.
+  </p>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Efectivo otorgado por staff</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Staff</th><th>Monto otorgado</th><th>Operaciones</th></tr></thead>
+      <tbody>
+        {% for row in topups.by_staff %}
+        <tr><td>{{ row.username }}</td><td>{{ row.amount|floatformat:2 }} UC</td><td>{{ row.count }}</td></tr>
+        {% empty %}
+        <tr><td colspan="3">Ningun staff ha otorgado ucoins.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Audiencia por perfil</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Perfil</th><th>Miembros</th><th>Compradores</th><th>Conversion</th></tr></thead>
+      <tbody>
+        {% for row in audience.by_profile %}
+        <tr>
+          <td>{{ row.profile_display }}</td>
+          <td>{{ row.members }}</td>
+          <td>{{ row.buyers }}</td>
+          <td>{{ row.conversion_rate }}%</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Sin membresias registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

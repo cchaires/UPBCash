@@ -1,0 +1,111 @@
+{% extends 'core/layouts/admin_shell.html' %}
+
+{% block title %}UPBCash - Reporte de ventas{% endblock %}
+
+{% block content %}
+<header class="main__header">
+  <div class="title-block">
+    <h1 class="page-title">Reporte de ventas</h1>
+    <p class="page-subtitle">Quien vendio mas, cuanto y cuando.</p>
+  </div>
+  <div class="status-pill">{% if event %}{{ event.name }}{% else %}Sin evento{% endif %}</div>
+</header>
+
+{% include 'core/includes/admin_event_picker.html' %}
+
+<section class="card stats-grid mt-14">
+  <article class="stat-card"><div class="item__name">Ingreso total</div><div class="item__desc">Excluye ordenes canceladas</div><div class="item__price"><span>{{ sales.revenue|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Ordenes</div><div class="item__desc">{{ sales.buyers }} compradores unicos</div><div class="item__price"><span>{{ sales.orders }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Ticket promedio</div><div class="item__desc">Ingreso / ordenes</div><div class="item__price"><span>{{ sales.average_ticket|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Articulos vendidos</div><div class="item__desc">Unidades entregadas o por entregar</div><div class="item__price"><span>{{ sales.units }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Margen estimado</div><div class="item__desc">Contra el costo vigente del catalogo</div><div class="item__price"><span>{{ sales.margin|floatformat:2 }} UC</span></div></article>
+  <article class="stat-card"><div class="item__name">Canceladas</div><div class="item__desc">{{ sales.cancelled_amount|floatformat:2 }} UC no cobrados</div><div class="item__price"><span>{{ sales.cancelled_orders }}</span></div></article>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Ranking de quioscos</h2>
+  <p class="helper mt-0">La venta se atribuye al quiosco, que es el vinculo que registra la orden. Los vendedores se listan como referencia del quiosco, no como autor de cada venta.</p>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Quiosco</th><th>Vendedores</th><th>Ingreso</th><th>% total</th>
+          <th>Ordenes</th><th>Unidades</th><th>Compradores</th><th>Ticket prom.</th><th>Margen est.</th><th>Cancel.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in stall_rows %}
+        <tr>
+          <td>{{ row.rank }}</td>
+          <td>
+            <div class="item__name">{{ row.stall_name }}</div>
+            <div class="item__desc">{{ row.stall_code }} · {{ row.status_display }}{% if row.spot_label %} · Espacio {{ row.spot_label }}{% endif %}</div>
+          </td>
+          <td><div class="item__desc">{{ row.vendors_display }}</div></td>
+          <td>{{ row.revenue|floatformat:2 }} UC</td>
+          <td>{{ row.revenue_share }}%</td>
+          <td>{{ row.orders }}</td>
+          <td>{{ row.units }}</td>
+          <td>{{ row.buyers }}</td>
+          <td>{{ row.average_ticket|floatformat:2 }}</td>
+          <td>{{ row.margin|floatformat:2 }}</td>
+          <td>{{ row.cancelled_orders }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="11">No hay quioscos registrados en este evento.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Ventas por dia</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Dia</th><th>Ingreso</th><th>Ordenes</th><th>Contra el dia pico</th></tr></thead>
+      <tbody>
+        {% for row in day_rows %}
+        <tr>
+          <td>{{ row.day|date:"d/m/Y" }}</td>
+          <td>{{ row.revenue|floatformat:2 }} UC</td>
+          <td>{{ row.orders }}</td>
+          <td>
+            <div class="chart-bars">
+              <div class="chart-bar js-chart-bar" data-value="{{ row.share_of_peak }}%"><span></span></div>
+            </div>
+            <div class="item__desc">{{ row.share_of_peak }}%</div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Sin ventas registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Ordenes por estado</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Estado</th><th>Ordenes</th><th>Monto</th></tr></thead>
+      <tbody>
+        {% for row in status_rows %}
+        <tr><td>{{ row.status_display }}</td><td>{{ row.orders }}</td><td>{{ row.amount|floatformat:2 }} UC</td></tr>
+        {% empty %}
+        <tr><td colspan="3">Sin ordenes registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll(".js-chart-bar").forEach((bar) => {
+    bar.style.setProperty("--value", bar.dataset.value || "0%");
+  });
+</script>
+{% endblock %}

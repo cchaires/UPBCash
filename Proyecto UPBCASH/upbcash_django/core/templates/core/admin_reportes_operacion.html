@@ -1,0 +1,125 @@
+{% extends 'core/layouts/admin_shell.html' %}
+
+{% block title %}UPBCash - Reporte de operacion{% endblock %}
+
+{% block content %}
+<header class="main__header">
+  <div class="title-block">
+    <h1 class="page-title">Reporte de operacion</h1>
+    <p class="page-subtitle">Entregas, soporte, actividad staff y ocupacion del mapa.</p>
+  </div>
+  <div class="status-pill">{% if event %}{{ event.name }}{% else %}Sin evento{% endif %}</div>
+</header>
+
+{% include 'core/includes/admin_event_picker.html' %}
+
+<section class="card stats-grid mt-14">
+  <article class="stat-card"><div class="item__name">Pendientes de entrega</div><div class="item__desc">{{ fulfillment.pending_amount|floatformat:2 }} UC comprometidos</div><div class="item__price"><span>{{ fulfillment.pending }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Entregadas</div><div class="item__desc">{{ fulfillment.delivery_rate }}% de las ordenes pagadas</div><div class="item__price"><span>{{ fulfillment.delivered }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Tiempo de entrega</div><div class="item__desc">Promedio desde la compra</div><div class="item__price"><span>{% if fulfillment.average_delivery_minutes %}{{ fulfillment.average_delivery_minutes }} min{% else %}Sin datos{% endif %}</span></div></article>
+  <article class="stat-card"><div class="item__name">Tickets abiertos</div><div class="item__desc">{{ support.total }} tickets en total</div><div class="item__price"><span>{{ support.open }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Carritos activos</div><div class="item__desc">{{ snapshot.active_cart_value|floatformat:2 }} UC sin cerrar</div><div class="item__price"><span>{{ snapshot.active_carts }}</span></div></article>
+  <article class="stat-card"><div class="item__name">Canceladas</div><div class="item__desc">Ordenes anuladas del evento</div><div class="item__price"><span>{{ fulfillment.cancelled }}</span></div></article>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Ordenes por estado</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Estado</th><th>Ordenes</th><th>Monto</th></tr></thead>
+      <tbody>
+        {% for row in status_rows %}
+        <tr><td>{{ row.status_display }}</td><td>{{ row.orders }}</td><td>{{ row.amount|floatformat:2 }} UC</td></tr>
+        {% empty %}
+        <tr><td colspan="3">Sin ordenes registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Ocupacion del evento</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Concepto</th><th>Total</th></tr></thead>
+      <tbody>
+        <tr><td>Espacios en mapa</td><td>{{ snapshot.spots_total }}</td></tr>
+        {% for row in snapshot.spots_by_status %}
+        <tr><td>&nbsp;&nbsp;Espacios {{ row.label|lower }}</td><td>{{ row.total }}</td></tr>
+        {% endfor %}
+        <tr><td>Quioscos</td><td>{{ snapshot.stalls_total }}</td></tr>
+        {% for row in snapshot.stalls_by_status %}
+        <tr><td>&nbsp;&nbsp;Quioscos {{ row.label|lower }}</td><td>{{ row.total }}</td></tr>
+        {% endfor %}
+        <tr><td>Quioscos con espacio asignado</td><td>{{ snapshot.assigned_stalls }}</td></tr>
+        <tr><td>Vendedores asignados</td><td>{{ snapshot.vendors_assigned }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Soporte</h2>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Tipo</th><th>Tickets</th></tr></thead>
+      <tbody>
+        {% for row in support.by_type %}
+        <tr><td>{{ row.label }}</td><td>{{ row.total }}</td></tr>
+        {% empty %}
+        <tr><td colspan="2">Sin tickets registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if support.oldest_open %}
+  <h3 class="section-title mt-14">Abiertos mas antiguos</h3>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Fecha</th><th>Usuario</th><th>Resumen</th><th>Estado</th></tr></thead>
+      <tbody>
+        {% for row in support.oldest_open %}
+        <tr>
+          <td>{{ row.created_at|date:"d/m/Y H:i" }}</td>
+          <td>{{ row.username }}</td>
+          <td>{{ row.summary }}</td>
+          <td>{{ row.status_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+
+<section class="card mt-14">
+  <h2 class="page-title staff-section-title">Actividad staff</h2>
+  <p class="helper mt-0">{{ staff.total }} acciones registradas en la bitacora del evento.</p>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Accion</th><th>Veces</th></tr></thead>
+      <tbody>
+        {% for row in staff.by_action %}
+        <tr><td>{{ row.label }}</td><td>{{ row.total }}</td></tr>
+        {% empty %}
+        <tr><td colspan="2">Sin acciones registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if staff.by_staff %}
+  <h3 class="section-title mt-14">Por usuario</h3>
+  <div class="table-wrap">
+    <table class="staff-table">
+      <thead><tr><th>Staff</th><th>Acciones</th></tr></thead>
+      <tbody>
+        {% for row in staff.by_staff %}
+        <tr><td>{{ row.label }}</td><td>{{ row.total }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
