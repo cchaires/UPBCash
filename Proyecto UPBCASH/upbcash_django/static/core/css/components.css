@@ -32,7 +32,7 @@
 }
 
 .userbox__sub {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -172,7 +172,7 @@
 
 .title-block p {
   margin: 0;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .header-actions {
@@ -422,7 +422,7 @@
 .section-subtitle,
 .history__item span {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .list-item__price,
@@ -835,7 +835,7 @@
 
 .saved-card__meta span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .card-actions {
@@ -893,7 +893,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -945,7 +945,7 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
