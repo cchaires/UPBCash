@@ -3,11 +3,15 @@
 {% block title %}UPBCash • Iniciar sesion{% endblock %}
 
 {% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-display font-bold text-brand-purple-900">Bienvenido a UPBCash</h1>
+  <p class="text-sm text-text-secondary mt-3">Inicia sesion para continuar</p>
+</div>
 <form class="form" method="post" action="{% url 'index' %}">
   {% csrf_token %}
 
   {% if error_message %}
-  <p class="flash flash--error">{{ error_message }}</p>
+  <p class="flash flash--error" role="alert" aria-live="assertive">{{ error_message }}</p>
   {% endif %}
 
   <input class="input" type="text" name="identifier" placeholder="Matricula / Correo" value="{{ request.POST.identifier|default:'' }}" required />
@@ -15,7 +19,7 @@
 
   <a class="link-inline" href="{% url 'recuperar' %}">Olvidaste tu contrasena?</a>
 
-  <button class="btn btn--primary w-full" type="submit">Iniciar sesion</button>
+  <button class="btn btn--primary w-full" type="submit" data-loading-text="Ingresando...">Iniciar sesion</button>
 
   <p class="helper">No tienes cuenta? <a href="{% url 'registro' %}">Registrarse</a></p>
   <a class="btn btn--ghost w-full" href="{% url 'registro_invitado' %}">Entrar como invitado</a>

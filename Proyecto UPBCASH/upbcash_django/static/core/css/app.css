@@ -1,0 +1,26 @@
+/*
+ * Entry point de Tailwind CSS para UPBCash.
+ *
+ * Compilar con:
+ *   npm run build:css   (una vez, minificado)
+ *   npm run watch:css   (recompila en cada cambio, para desarrollo)
+ *
+ * El proyecto Django no usa `git init` todavia, por lo que la
+ * autodeteccion de clases de Tailwind (basada en heuristicas de repo)
+ * puede no cubrir el arbol de templates -> se registra explicitamente.
+ */
+@import "tailwindcss";
+@source "../../../core/templates";
+
+/* tokens.css: fuente de verdad de la paleta (derivada del logo), sin cambios. */
+@import "./tokens.css";
+
+/* Alias de esos tokens al namespace de Tailwind (@theme). */
+@import "./theme.map.css";
+
+/* Sistema de estilos existente, migrado a capas de Tailwind sin
+   renombrar ninguna clase (ver comentarios en cada archivo). */
+@import "./base.css";
+@import "./layout-shell.css";
+@import "./components.css";
+@import "./utilities.css";

@@ -1,0 +1,14 @@
+{
+  "name": "upbcash-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Build tooling for the UPBCash Tailwind CSS stylesheet (no bundler, no JS framework).",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/core/css/app.css -o ./static/core/css/app.build.css --minify",
+    "watch:css": "tailwindcss -i ./static/core/css/app.css -o ./static/core/css/app.build.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4",
+    "tailwindcss": "^4"
+  }
+}

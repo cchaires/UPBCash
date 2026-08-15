@@ -1,6 +1,11 @@
-.env
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+venv/
+.env
 db.sqlite3
-/upbcash_django/media/stalls/
-.venv
+
+# Node / Tailwind build tooling
+node_modules/
+static/core/css/app.build.css
+static/core/css/app.build.css.map

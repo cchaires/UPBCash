@@ -1,0 +1,83 @@
+/*
+ * Mapeo de tema Tailwind -> tokens de marca UPBCash.
+ *
+ * tokens.css sigue siendo la unica fuente de verdad de los valores
+ * (paleta derivada del logo: morado + dorado). Aqui solo se alias-ean
+ * esas variables al namespace que Tailwind usa para generar utilidades
+ * (--color-*, --radius-*, --shadow-*, --font-*), sin duplicar hex.
+ *
+ * Esto habilita utilidades como bg-brand-purple-700, text-brand-gold-500,
+ * rounded-lg, shadow-brand-md, font-display, etc.
+ */
+@theme {
+  /* Marca: morado (color primario del logo/identidad) */
+  --color-brand-purple-900: var(--brand-purple-900);
+  --color-brand-purple-800: var(--brand-purple-800);
+  --color-brand-purple-700: var(--brand-purple-700);
+  --color-brand-purple-600: var(--brand-purple-600);
+  --color-brand-purple-100: var(--brand-purple-100);
+
+  /* Marca: dorado (acento del escudo del logo) */
+  --color-brand-gold-600: var(--brand-gold-600);
+  --color-brand-gold-500: var(--brand-gold-500);
+  --color-brand-gold-400: var(--brand-gold-400);
+  --color-brand-gold-100: var(--brand-gold-100);
+
+  /* Texto */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  /* Superficies */
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-muted: var(--surface-muted);
+
+  /* Estados */
+  --color-success: var(--state-success-text);
+  --color-success-bg: var(--state-success-bg);
+  --color-warning: var(--state-warning-text);
+  --color-warning-bg: var(--state-warning-bg);
+  --color-error: var(--state-error-text);
+  --color-error-bg: var(--state-error-bg);
+  --color-info: var(--state-info-text);
+  --color-info-bg: var(--state-info-bg);
+
+  /*
+   * Radios de marca, expuestos con nombre propio (rounded-brand-*) en vez
+   * de sobreescribir las claves nativas --radius-sm/md/lg/xl de Tailwind:
+   * CSS no permite `--radius-sm: var(--radius-sm)` (referencia circular a
+   * si misma -> valor invalido). El CSS existente ya usa border-radius:
+   * var(--radius-*) de forma directa, asi que esto es solo un extra para
+   * poder usar rounded-brand-* en retoques nuevos.
+   */
+  --radius-brand-xs: var(--radius-xs);
+  --radius-brand-sm: var(--radius-sm);
+  --radius-brand-md: var(--radius-md);
+  --radius-brand-lg: var(--radius-lg);
+  --radius-brand-xl: var(--radius-xl);
+  --radius-brand-pill: var(--radius-pill);
+
+  /* Sombras de marca */
+  --shadow-brand-sm: var(--shadow-sm);
+  --shadow-brand-md: var(--shadow-md);
+  --shadow-brand-lg: var(--shadow-lg);
+
+  /*
+   * Tipografia: mismo problema de auto-referencia que los radios (las
+   * claves --font-sans/--font-display SI deben llamarse asi para que
+   * Tailwind genere las utilidades font-sans/font-display). Se duplica
+   * aqui el stack tal como esta en tokens.css/base.css; si se cambia la
+   * fuente, actualizar en ambos lugares.
+   */
+  --font-sans: "UPBCash Sans", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "UPBCash Display", "Trebuchet MS", "Segoe UI", sans-serif;
+
+  /* Breakpoints existentes del layout, registrados para poder usar
+     sm:/md:/lg: en retoques nuevos de forma consistente con las
+     media queries ya definidas en layout-shell.css/components.css */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 880px;
+  --breakpoint-lg: 980px;
+  --breakpoint-xl: 1180px;
+}
