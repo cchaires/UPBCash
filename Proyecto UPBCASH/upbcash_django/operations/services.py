@@ -1,12 +1,15 @@
 from decimal import Decimal, InvalidOperation
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from accounting.services import WalletService
+from events.models import CampaignStatus, EventUserGroup
 from events.services import (
     PROFILE_GROUP_NAMES,
+    activate_campaign,
     assert_event_writable,
     assign_group_to_user,
     remove_group_from_user,
@@ -470,6 +473,64 @@ class StaffOpsService:
     @transaction.atomic
     def assign_spot(cls, *, event, staff_user, stall, spot):
         return cls.assign_spot_to_stall(event=event, staff_user=staff_user, stall=stall, spot=spot)
+
+    @classmethod
+    @transaction.atomic
+    def activate_event(cls, *, event, staff_user):
+        """Activa `event` y arrastra al equipo staff para no dejarlo fuera.
+
+        `EventUserGroup` es por evento y `sync_auth_profile_groups_for_event`
+        remueve de `auth.Group` todo rol que el usuario no tenga en el evento
+        activo. Una campana recien creada no tiene ninguna membresia, asi que
+        activarla sin sembrar el rol `staff` dejaria a todo el personal sin
+        acceso a `/staff/` y sin poder operar el mapa. Por eso se copia el
+        conjunto de usuarios con rol `staff` de la campana que estaba activa,
+        mas quien ejecuta la accion.
+
+        `cliente` no se copia porque `ensure_user_client_membership` lo recrea
+        en cada request, y `vendedor` tampoco porque los puestos y espacios son
+        propios de cada evento y deben reasignarse.
+
+        Nota de autorizacion: aqui NO se llama a `_assert_staff(event=event)`.
+        Ese helper valida contra `EventUserGroup` del evento indicado y el
+        evento destino todavia no tiene membresias, asi que se rechazaria
+        siempre a si mismo. La compuerta es la vista, que exige
+        `PERM_MANAGE_EVENT_PROFILES` evaluado contra el evento activo, que es
+        el contexto donde el usuario si tiene rol.
+        """
+        # Se lee de todas las campanas activas distintas a la destino y no de
+        # `get_active_campaign()`: cuando el evento se guarda ya con status
+        # activo antes de llamar aqui, ese helper podria devolver el propio
+        # evento destino y el equipo no se arrastraria.
+        staff_user_ids = set(
+            EventUserGroup.objects.filter(
+                event__status=CampaignStatus.ACTIVE,
+                group__name="staff",
+            )
+            .exclude(event_id=event.id)
+            .values_list("user_id", flat=True)
+        )
+        if staff_user and staff_user.is_authenticated and not staff_user.is_superuser:
+            staff_user_ids.add(staff_user.id)
+
+        demoted = activate_campaign(event=event)
+
+        user_model = get_user_model()
+        for carried_user in user_model.objects.filter(id__in=staff_user_ids):
+            assign_group_to_user(event=event, user=carried_user, group_name="staff")
+
+        cls._log_action(
+            event=event,
+            staff_user=staff_user,
+            action_type="activate_event",
+            target_object=event,
+            payload={
+                "event_code": event.code,
+                "demoted_event_codes": [campaign.code for campaign in demoted],
+                "carried_staff_user_ids": sorted(staff_user_ids),
+            },
+        )
+        return demoted
 
     @classmethod
     @transaction.atomic

@@ -4,18 +4,29 @@
 
 {% block content %}
 <header class="main__header">
-  <div>
+  <div class="title-block">
     <h1 class="page-title">Gestion de campanas y eventos</h1>
     <p class="page-subtitle">Ventana de campana (staff/vendedor) y ventana publica (cliente).</p>
   </div>
+  <div class="status-pill">Activo: {% if event %}{{ event.code }}{% else %}ninguno{% endif %}</div>
 </header>
 
 {% include 'core/includes/flash_messages.html' %}
 
 <section class="card mt-14">
-  <h2 class="page-title staff-section-title">{% if editing_event %}Editar evento{% else %}Crear evento{% endif %}</h2>
+  <h2 class="page-title staff-section-title">
+    {% if is_creating %}Crear evento{% else %}Editar evento: {{ editing_event.name }}{% endif %}
+  </h2>
+  <p class="helper mt-0">
+    {% if is_creating %}
+    Se creara una campana nueva. Los eventos existentes no se modifican.
+    {% else %}
+    Estas editando <strong>{{ editing_event.code }}</strong>. Para capturar uno nuevo usa "Crear evento nuevo".
+    {% endif %}
+  </p>
   <form method="post" enctype="multipart/form-data" class="form form--wide staff-form-grid">
     {% csrf_token %}
+    <input type="hidden" name="action" value="save_event" />
     {% if editing_event %}<input type="hidden" name="event_id" value="{{ editing_event.id }}" />{% endif %}
     <div class="field"><label for="code">Codigo</label><input class="input" id="code" name="code" maxlength="32" required value="{% if editing_event %}{{ editing_event.code }}{% endif %}" /></div>
     <div class="field"><label for="name">Nombre</label><input class="input" id="name" name="name" maxlength="160" required value="{% if editing_event %}{{ editing_event.name }}{% endif %}" /></div>
@@ -42,23 +53,51 @@
     </div>
     <div class="field grid-col-full"><label for="description">Descripcion</label><textarea class="input" id="description" name="description" rows="3">{% if editing_event %}{{ editing_event.description }}{% endif %}</textarea></div>
     <div class="actions-row grid-col-full">
-      <button class="btn btn--secondary" type="submit">Guardar evento</button>
-      <a class="btn btn--ghost" href="{% url 'staff_eventos' %}">Nuevo</a>
+      <button class="btn btn--secondary" type="submit">{% if is_creating %}Crear evento{% else %}Guardar cambios{% endif %}</button>
+      {% if not is_creating %}
+      <a class="btn btn--ghost" href="{% url 'staff_eventos' %}">Cancelar edicion</a>
+      {% endif %}
     </div>
   </form>
 </section>
 
 <section class="card mt-14">
-  <h2 class="page-title staff-section-title">Eventos registrados</h2>
+  <div class="section-header">
+    <h2 class="page-title staff-section-title">Eventos registrados</h2>
+    {% if not is_creating %}
+    <a class="btn btn--secondary" href="{% url 'staff_eventos' %}">Crear evento nuevo</a>
+    {% endif %}
+  </div>
+  <p class="helper mt-0">Solo una campana puede estar activa a la vez: al activar una, la anterior pasa a borrador y conserva sus datos.</p>
   <div class="list">
     {% for campaign in campaigns %}
     <article class="list-item">
       <div>
-        <div class="list-item__title">{{ campaign.code }} · {{ campaign.name }}</div>
+        <div class="list-item__title">
+          {{ campaign.code }} · {{ campaign.name }}
+          {% if campaign.id == active_event_id %}
+          <span class="chip chip--accent">Activo</span>
+          {% else %}
+          <span class="chip">{{ campaign.get_status_display }}</span>
+          {% endif %}
+          {% if editing_event and campaign.id == editing_event.id %}
+          <span class="chip">En edicion</span>
+          {% endif %}
+        </div>
         <div class="list-item__meta">Campana: {{ campaign.starts_at|date:"d/m H:i" }} - {{ campaign.ends_at|date:"d/m H:i" }}</div>
         <div class="list-item__meta">Publico: {{ campaign.public_starts_at|default:campaign.starts_at|date:"d/m H:i" }} - {{ campaign.public_ends_at|default:campaign.ends_at|date:"d/m H:i" }}</div>
       </div>
-      <a class="btn btn--secondary" href="{% url 'staff_eventos' %}?event_id={{ campaign.id }}">Editar</a>
+      <div class="actions-row">
+        <a class="btn btn--secondary" href="{% url 'staff_eventos' %}?event_id={{ campaign.id }}">Editar</a>
+        {% if campaign.id != active_event_id %}
+        <form method="post" class="inline">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="activate_event" />
+          <input type="hidden" name="event_id" value="{{ campaign.id }}" />
+          <button class="btn btn--ghost" type="submit">Activar</button>
+        </form>
+        {% endif %}
+      </div>
     </article>
     {% empty %}
     <article class="list-item"><div class="list-item__title">Sin eventos registrados.</div></article>

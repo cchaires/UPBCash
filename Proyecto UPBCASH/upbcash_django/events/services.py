@@ -61,6 +61,30 @@ def validate_campaign_windows(
     return resolved_public_starts, resolved_public_ends
 
 
+@transaction.atomic
+def activate_campaign(*, event):
+    """Deja `event` como la unica campana activa.
+
+    El proyecto asume una sola campana activa a la vez: `get_active_campaign`
+    devuelve un unico evento y todas las vistas de cliente/vendedor cuelgan de
+    el. Las demas campanas activas pasan a borrador (no a cerrado, que es un
+    estado de solo lectura irreversible en la practica).
+
+    Devuelve la lista de campanas demovidas, para poder informarlas.
+    """
+    demoted = list(
+        EventCampaign.objects.exclude(id=event.id).filter(status=CampaignStatus.ACTIVE)
+    )
+    if demoted:
+        EventCampaign.objects.filter(id__in=[campaign.id for campaign in demoted]).update(
+            status=CampaignStatus.DRAFT
+        )
+    if event.status != CampaignStatus.ACTIVE:
+        event.status = CampaignStatus.ACTIVE
+        event.save(update_fields=["status"])
+    return demoted
+
+
 def assert_event_writable(event):
     if event.status == CampaignStatus.CLOSED:
         raise EventClosedError("El evento esta cerrado y en modo solo lectura.")

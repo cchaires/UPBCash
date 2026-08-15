@@ -772,6 +772,220 @@ class StaffPanelAccessTests(TestCase):
         )
 
 
+class StaffEventosTests(TestCase):
+    """Creacion y activacion de multiples campanas desde `/staff/eventos/`."""
+
+    def setUp(self):
+        self.user_model = get_user_model()
+        self.event = EventCampaign.objects.create(
+            code="kermes-actual",
+            name="Kermes actual",
+            description="Campana en curso",
+            starts_at=timezone.now() - timezone.timedelta(days=1),
+            ends_at=timezone.now() + timezone.timedelta(days=30),
+            timezone="America/Mexico_City",
+            max_map_spots=7,
+            status=CampaignStatus.ACTIVE,
+        )
+        # La migracion `events.0002_seed_defaults` deja un `default-boot` activo;
+        # se demueve para que el escenario tenga una sola campana activa.
+        EventCampaign.objects.exclude(id=self.event.id).filter(status=CampaignStatus.ACTIVE).update(
+            status=CampaignStatus.DRAFT
+        )
+        self.staff_user = self.user_model.objects.create_user(username="staff-eventos", password="secret")
+        self.plain_user = self.user_model.objects.create_user(username="cliente-eventos", password="secret")
+        assign_group_to_user(event=self.event, user=self.staff_user, group_name="staff")
+
+    def _form_payload(self, **overrides):
+        payload = {
+            "action": "save_event",
+            "code": "kermes-nueva",
+            "name": "Kermes nueva",
+            "description": "Campana nueva",
+            "status": CampaignStatus.DRAFT,
+            "starts_at": "2027-01-10T08:00",
+            "ends_at": "2027-01-12T20:00",
+            "public_starts_at": "",
+            "public_ends_at": "",
+            "max_map_spots": "5",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_get_without_event_id_opens_create_mode(self):
+        # Regresion: antes caia al evento activo y mostraba "Editar evento"
+        # precargado con sus datos.
+        self.client.login(username="staff-eventos", password="secret")
+
+        response = self.client.get(reverse("staff_eventos"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["editing_event"])
+        self.assertTrue(response.context["is_creating"])
+        self.assertContains(response, "Crear evento")
+        # El formulario de alta no debe arrastrar el id del evento activo: ese
+        # hidden era el que hacia que "Nuevo" terminara sobrescribiendolo.
+        save_form = response.content.decode().split("Eventos registrados")[0]
+        self.assertNotIn('name="event_id"', save_form)
+        self.assertNotIn("Kermes actual", save_form)
+
+    def test_get_with_event_id_opens_edit_mode(self):
+        self.client.login(username="staff-eventos", password="secret")
+
+        response = self.client.get(reverse("staff_eventos"), {"event_id": self.event.id})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["editing_event"], self.event)
+        self.assertFalse(response.context["is_creating"])
+        self.assertContains(response, "Kermes actual")
+
+    def test_post_without_event_id_creates_new_event_and_keeps_existing(self):
+        # La regresion importante: este POST sobrescribia el evento activo.
+        self.client.login(username="staff-eventos", password="secret")
+
+        response = self.client.post(reverse("staff_eventos"), self._form_payload(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        created = EventCampaign.objects.get(code="kermes-nueva")
+        self.assertEqual(created.status, CampaignStatus.DRAFT)
+
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.code, "kermes-actual")
+        self.assertEqual(self.event.name, "Kermes actual")
+        self.assertEqual(self.event.max_map_spots, 7)
+        self.assertEqual(self.event.status, CampaignStatus.ACTIVE)
+
+    def test_post_with_event_id_edits_that_event_only(self):
+        self.client.login(username="staff-eventos", password="secret")
+
+        self.client.post(
+            reverse("staff_eventos"),
+            self._form_payload(
+                event_id=str(self.event.id),
+                code="kermes-actual",
+                name="Kermes renombrada",
+                status=CampaignStatus.ACTIVE,
+                starts_at="2026-01-10T08:00",
+                ends_at="2026-01-12T20:00",
+            ),
+            follow=True,
+        )
+
+        self.assertFalse(EventCampaign.objects.filter(code="kermes-nueva").exists())
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.name, "Kermes renombrada")
+
+    def test_saving_event_as_active_demotes_previous_active(self):
+        self.client.login(username="staff-eventos", password="secret")
+
+        self.client.post(
+            reverse("staff_eventos"),
+            self._form_payload(status=CampaignStatus.ACTIVE),
+            follow=True,
+        )
+
+        created = EventCampaign.objects.get(code="kermes-nueva")
+        self.event.refresh_from_db()
+        self.assertEqual(created.status, CampaignStatus.ACTIVE)
+        self.assertEqual(self.event.status, CampaignStatus.DRAFT)
+        self.assertEqual(EventCampaign.objects.filter(status=CampaignStatus.ACTIVE).count(), 1)
+
+    def test_activate_action_from_list_switches_active_event(self):
+        draft = EventCampaign.objects.create(
+            code="kermes-borrador",
+            name="Kermes borrador",
+            starts_at=timezone.now() + timezone.timedelta(days=60),
+            ends_at=timezone.now() + timezone.timedelta(days=62),
+            timezone="America/Mexico_City",
+            status=CampaignStatus.DRAFT,
+        )
+        self.client.login(username="staff-eventos", password="secret")
+
+        response = self.client.post(
+            reverse("staff_eventos"),
+            {"action": "activate_event", "event_id": str(draft.id)},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        draft.refresh_from_db()
+        self.event.refresh_from_db()
+        self.assertEqual(draft.status, CampaignStatus.ACTIVE)
+        self.assertEqual(self.event.status, CampaignStatus.DRAFT)
+        self.assertTrue(
+            StaffAuditLog.objects.filter(event=draft, action_type="activate_event").exists()
+        )
+
+    def test_staff_keeps_access_after_activating_a_brand_new_event(self):
+        # `EventUserGroup` es por evento y `sync_auth_profile_groups_for_event`
+        # remueve los roles ausentes: sin arrastrar el rol staff, activar una
+        # campana nueva dejaria al personal fuera del panel.
+        self.client.login(username="staff-eventos", password="secret")
+        self.client.post(
+            reverse("staff_eventos"),
+            self._form_payload(status=CampaignStatus.ACTIVE),
+            follow=True,
+        )
+        created = EventCampaign.objects.get(code="kermes-nueva")
+
+        self.assertTrue(
+            EventUserGroup.objects.filter(
+                event=created,
+                user=self.staff_user,
+                group__name="staff",
+            ).exists()
+        )
+        response = self.client.get(reverse("staff_panel"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_activating_carries_the_whole_staff_team(self):
+        teammate = self.user_model.objects.create_user(username="staff-compa", password="secret")
+        assign_group_to_user(event=self.event, user=teammate, group_name="staff")
+        draft = EventCampaign.objects.create(
+            code="kermes-equipo",
+            name="Kermes equipo",
+            starts_at=timezone.now() + timezone.timedelta(days=90),
+            ends_at=timezone.now() + timezone.timedelta(days=92),
+            timezone="America/Mexico_City",
+            status=CampaignStatus.DRAFT,
+        )
+        self.client.login(username="staff-eventos", password="secret")
+
+        self.client.post(
+            reverse("staff_eventos"),
+            {"action": "activate_event", "event_id": str(draft.id)},
+            follow=True,
+        )
+
+        for user in (self.staff_user, teammate):
+            self.assertTrue(
+                EventUserGroup.objects.filter(event=draft, user=user, group__name="staff").exists(),
+                msg=f"{user.username} perdio el rol staff al cambiar de evento",
+            )
+
+    def test_non_staff_cannot_create_or_activate_events(self):
+        self.client.login(username="cliente-eventos", password="secret")
+
+        create_response = self.client.post(reverse("staff_eventos"), self._form_payload())
+        self.assertEqual(create_response.status_code, 302)
+        self.assertFalse(EventCampaign.objects.filter(code="kermes-nueva").exists())
+
+        activate_response = self.client.post(
+            reverse("staff_eventos"),
+            {"action": "activate_event", "event_id": str(self.event.id)},
+        )
+        self.assertEqual(activate_response.status_code, 302)
+
+    def test_unknown_event_id_falls_back_to_create_mode(self):
+        self.client.login(username="staff-eventos", password="secret")
+
+        response = self.client.get(reverse("staff_eventos"), {"event_id": "999999"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["editing_event"])
+        self.assertTrue(response.context["is_creating"])
+
+
 class EventLockAccessTests(TestCase):
     def setUp(self):
         self.user_model = get_user_model()

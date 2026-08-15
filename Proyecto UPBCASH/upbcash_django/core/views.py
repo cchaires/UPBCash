@@ -1524,6 +1524,17 @@ def _parse_datetime_local(raw_value):
     return naive
 
 
+def _event_activation_message(activated_event, demoted_events):
+    """Mensaje de activacion que nombra las campañas que quedaron en borrador."""
+    if not demoted_events:
+        return f"El evento {activated_event.code} quedo activo."
+    demoted_codes = ", ".join(campaign.code for campaign in demoted_events)
+    return (
+        f"El evento {activated_event.code} quedo activo. "
+        f"Solo puede haber una campaña activa, asi que paso a borrador: {demoted_codes}."
+    )
+
+
 @login_required(login_url="index")
 def staff_eventos(request):
     event, snapshot = _active_event_with_membership(request.user)
@@ -1531,12 +1542,42 @@ def staff_eventos(request):
     if role_redirect:
         return role_redirect
 
-    editing_event_id = (request.GET.get("event_id") or request.POST.get("event_id") or "").strip()
-    editing_event = EventCampaign.objects.filter(id=editing_event_id).first() if editing_event_id.isdigit() else event
+    # Solo un `event_id` explicito pone la pantalla en modo edicion. Sin el, el
+    # modo es "crear": caer al evento activo hacia que el boton "Nuevo"
+    # precargara -y al guardar sobrescribiera- la campana en curso.
+    raw_event_id = (request.GET.get("event_id") or request.POST.get("event_id") or "").strip()
+    editing_event = None
+    if raw_event_id.isdigit():
+        editing_event = EventCampaign.objects.filter(id=int(raw_event_id)).first()
+        if not editing_event:
+            messages.error(request, "El evento que intentas editar ya no existe.")
+
+    def _redirect_keeping_mode():
+        target = reverse("staff_eventos")
+        if editing_event:
+            return redirect(f"{target}?event_id={editing_event.id}")
+        return redirect(target)
 
     if request.method == "POST":
         if not has_permission(user=request.user, permission=PERM_MANAGE_EVENT_PROFILES, snapshot=snapshot):
             messages.error(request, "No cuentas con permisos para administrar campañas/eventos.")
+            return redirect("staff_eventos")
+
+        action = (request.POST.get("action") or "save_event").strip()
+        if action == "activate_event":
+            if not editing_event:
+                messages.error(request, "Selecciona un evento valido para activar.")
+                return redirect("staff_eventos")
+            if editing_event.status == CampaignStatus.ACTIVE:
+                messages.info(request, f"El evento {editing_event.code} ya estaba activo.")
+                return redirect("staff_eventos")
+
+            demoted = StaffOpsService.activate_event(event=editing_event, staff_user=request.user)
+            messages.success(request, _event_activation_message(editing_event, demoted))
+            return redirect("staff_eventos")
+
+        if action != "save_event":
+            messages.error(request, "Accion no valida para eventos.")
             return redirect("staff_eventos")
 
         code = (request.POST.get("code") or "").strip().lower()
@@ -1553,7 +1594,7 @@ def staff_eventos(request):
 
         if not code or not name or not starts_at or not ends_at:
             messages.error(request, "Codigo, nombre y ventanas de campaña son obligatorios.")
-            return redirect("staff_eventos")
+            return _redirect_keeping_mode()
 
         if status not in {choice for choice, _ in CampaignStatus.choices}:
             status = CampaignStatus.DRAFT
@@ -1562,10 +1603,10 @@ def staff_eventos(request):
             max_map_spots = int(max_map_spots_raw or "0")
         except ValueError:
             messages.error(request, "El maximo de espacios debe ser un numero entero.")
-            return redirect("staff_eventos")
+            return _redirect_keeping_mode()
         if max_map_spots <= 0:
             messages.error(request, "El maximo de espacios debe ser mayor a cero.")
-            return redirect("staff_eventos")
+            return _redirect_keeping_mode()
 
         try:
             resolved_public_starts, resolved_public_ends = validate_campaign_windows(
@@ -1576,7 +1617,7 @@ def staff_eventos(request):
             )
         except Exception as exc:  # noqa: BLE001
             messages.error(request, str(exc))
-            return redirect("staff_eventos")
+            return _redirect_keeping_mode()
 
         target_event = editing_event or EventCampaign()
         target_event.code = code
@@ -1594,18 +1635,25 @@ def staff_eventos(request):
             target_event.map_image.delete(save=False)
             target_event.map_image = None
 
+        is_new_event = editing_event is None
         try:
             target_event.full_clean()
             target_event.save()
         except Exception as exc:  # noqa: BLE001
             messages.error(request, str(exc))
-            return redirect("staff_eventos")
+            return _redirect_keeping_mode()
+
+        if is_new_event:
+            messages.success(request, f"Evento {target_event.code} creado correctamente.")
+        else:
+            messages.success(request, f"Evento {target_event.code} actualizado correctamente.")
 
         if target_event.status == CampaignStatus.ACTIVE:
-            EventCampaign.objects.exclude(id=target_event.id).filter(status=CampaignStatus.ACTIVE).update(
-                status=CampaignStatus.DRAFT
-            )
-        messages.success(request, "Campaña/evento guardado correctamente.")
+            # Pasa por el servicio para arrastrar el equipo staff al evento
+            # nuevo; activarlo a secas dejaria a todo el personal sin acceso.
+            demoted = StaffOpsService.activate_event(event=target_event, staff_user=request.user)
+            messages.success(request, _event_activation_message(target_event, demoted))
+
         return redirect(f"{reverse('staff_eventos')}?event_id={target_event.id}")
 
     campaigns = list(EventCampaign.objects.order_by("-starts_at", "-id")[:50])
@@ -1614,6 +1662,8 @@ def staff_eventos(request):
         "event": event,
         "campaigns": campaigns,
         "editing_event": editing_event,
+        "is_creating": editing_event is None,
+        "active_event_id": event.id if event else None,
         "campaign_statuses": CampaignStatus.choices,
     }
     return render(request, "core/staff_eventos.html", context)
